@@ -66,6 +66,7 @@ function doPost(e) {
       case 'ownerLoad': requireOwner(body); return json({ ok: true, state: readAll() });
       case 'ownerSave': requireOwner(body); return json(ownerSave(body));
       case 'changePassword': requireOwner(body); return json(changePassword(body));
+      case 'uploadImage': requireOwner(body); return json(uploadImage(body));
       default: return json({ ok: false, error: 'unknown' });
     }
   } catch (err) {
@@ -276,12 +277,25 @@ function storeImages(coll, rec, out) {
   const field = coll === 'settings' ? 'logo' : (coll === 'banners' || coll === 'gallery') ? 'img' : null;
   if (!field) return;
   const v = rec[field]; if (typeof v !== 'string' || v.indexOf('data:') !== 0) return;
-  const m = /^data:([\w\/+.-]+);base64,(.*)$/.exec(v); if (!m) return;
+  const url = saveImage(v, coll + '-' + (rec.id || 'logo')); if (!url) return;
+  rec[field] = url;
+  out.push({ coll: coll, id: rec.id || null, field: field, url: url });
+}
+// Saves one data: URL image to the Drive folder and returns its public link.
+function saveImage(dataUrl, name) {
+  const m = /^data:(image\/[\w+.-]+);base64,(.*)$/.exec(dataUrl); if (!m) return '';
   const ext = (m[1].split('/')[1] || 'img').replace('svg+xml', 'svg').replace('jpeg', 'jpg');
-  const file = imageFolder().createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], coll + '-' + (rec.id || 'logo') + '-' + Date.now() + '.' + ext));
+  const file = imageFolder().createFile(Utilities.newBlob(Utilities.base64Decode(m[2]), m[1], clip(name, 60) + '-' + Date.now() + '.' + ext));
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-  rec[field] = imageUrl(file.getId());
-  out.push({ coll: coll, id: rec.id || null, field: field, url: rec[field] });
+  return imageUrl(file.getId());
+}
+// Product photos uploaded from the dashboard.
+function uploadImage(b) {
+  const v = String(b.data || '');
+  if (v.length > 8000000) fail('tooBig');
+  const url = saveImage(v, 'product-' + String(b.name || 'photo').replace(/[^\w-]+/g, '-'));
+  if (!url) fail('badImage');
+  return { ok: true, url: url };
 }
 function imageFolder() {
   const p = props(), id = p.getProperty('imageFolder');

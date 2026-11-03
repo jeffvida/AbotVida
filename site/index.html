@@ -331,6 +331,14 @@ body.is-shop .step p{font-size:15px}
 .nf{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .hotbtn{border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--muted);padding:4px}
 .hotbtn[aria-pressed="true"]{color:var(--accent)}
+.phgrid{display:flex;gap:8px;flex-wrap:wrap}
+.ph-t{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center;flex:none}
+.ph-t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph-t .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:14px;line-height:24px;padding:0}
+.ph-t .mk{position:absolute;left:4px;bottom:4px;font-size:10.5px;font-weight:700;border:0;border-radius:5px;padding:2px 6px;cursor:pointer;background:rgba(0,0,0,.6);color:#fff}
+.ph-t .mk.on{background:var(--accent);color:var(--on-accent);cursor:default}
+.ph-add{border-style:dashed;cursor:pointer;font-weight:600;font-size:12.5px;color:var(--ink)}
+.ph-links summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:4px}
 /* ===== Shop (Shopee-style) ===== */
 .thumb{position:relative;aspect-ratio:4/3;max-width:100%;background:var(--surface);display:grid;place-items:center;color:var(--muted);overflow:hidden}
 .thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--raised)}
@@ -1318,16 +1326,50 @@ function productFormHTML(){
       <div class="field"><label for="pf-dp">Service charge value</label><input class="input num" id="pf-dp" name="dpValue" type="number" min="0" step="0.01" value="${esc(p.dpValue)}" required><span class="hint">Separate from the item price. Never reduces the monthly amount.</span></div>
       <div class="field"><span class="lab">Available terms (months)</span><div class="checks">${DURATIONS.map(d=>`<label><input type="checkbox" name="dur" value="${d}" ${p.durations.includes(d)?'checked':''}>${d}</label>`).join('')}</div></div>
     </div>
-    <div class="row2">
-      <div class="field"><label for="pf-img">Photo links</label><textarea class="input" id="pf-img" name="imageUrl" placeholder="https://… (one per line)" style="min-height:64px">${esc(p.imageUrl)}</textarea><span class="hint">One link per line. Customers can swipe through them. Leave blank to show a placeholder.</span></div>
-      <div class="field"><label for="pf-src">Product source URL <span class="hint">(optional)</span></label><input class="input" id="pf-src" name="sourceUrl" value="${esc(p.sourceUrl)}" placeholder="Store page you'll buy from"></div>
+    <div class="field"><span class="lab">Photos</span>
+      <div class="phgrid" id="pf-photos">${photoTilesHTML(p.imageUrl)}</div>
+      <input type="file" id="pf-files" accept="image/*" multiple hidden data-pfphotos="1">
+      <span class="hint">Take a photo or choose from your phone or computer. The first photo is the main one customers see.</span>
+      <details class="ph-links"><summary>Or paste photo links</summary><textarea class="input" id="pf-img" name="imageUrl" placeholder="https://… (one per line)" style="min-height:64px;margin-top:6px">${esc(p.imageUrl)}</textarea></details>
     </div>
+    <div class="field"><label for="pf-src">Product source URL <span class="hint">(optional)</span></label><input class="input" id="pf-src" name="sourceUrl" value="${esc(p.sourceUrl)}" placeholder="Store page you'll buy from"></div>
     ${preview?`<div class="mini-summary num"><div><span>Customer sees (longest term)</span><b>${peso(preview.dp)} service charge + ${peso(preview.monthly)}/mo × ${preview.months}</b></div></div>`:''}
     ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
     <div style="display:flex;gap:10px;justify-content:flex-end"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">${M.id?'Save changes':'Add product'}</button></div>
   </form></div>`;
 }
+/* ---------- Product photos: upload from the device ---------- */
+const pfLines = () => (document.getElementById('pf-img')?.value||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+function photoTilesHTML(val){
+  const list = String(val||'').split(/\n+/).map(x=>x.trim()).filter(Boolean);
+  const up = ui.pfUploading||0;
+  return list.map((src,i)=>`<div class="ph-t"><img src="${esc(src)}" alt="" onerror="this.replaceWith(Object.assign(document.createElement('span'),{textContent:'Photo not loading'}))">
+      <button type="button" class="x" data-act="pf-ph-del" data-i="${i}" aria-label="Remove photo ${i+1}">×</button>
+      ${i===0?'<span class="mk on">Main</span>':`<button type="button" class="mk" data-act="pf-ph-main" data-i="${i}">Make main</button>`}</div>`).join('')
+    + Array.from({length:up},()=>`<div class="ph-t">Uploading…</div>`).join('')
+    + `<label class="ph-t ph-add" for="pf-files">+ Add photos</label>`;
+}
+function renderPfPhotos(){ const g = document.getElementById('pf-photos'); if (g) g.innerHTML = photoTilesHTML(pfLines().join('\n')); }
+function setPfLines(list){ const ta = document.getElementById('pf-img'); if (ta){ ta.value = list.join('\n'); renderPfPhotos(); } }
+async function addProductPhotos(files){
+  const name = document.getElementById('pf-name')?.value || 'photo';
+  for (const f of files){
+    if (!/^image\//.test(f.type)){ toast('That file is not a photo.'); continue; }
+    ui.pfUploading = (ui.pfUploading||0)+1; renderPfPhotos();
+    try{
+      const data = await compressImage(f, 1200, 0.82);
+      let url = data;
+      if (API_URL){
+        const r = await api({ action:'uploadImage', token:SY.token, data, name });
+        if (!r.ok) throw new Error(r.error==='auth' ? 'Please sign in again.' : 'Upload failed.');
+        url = r.url;
+      }
+      ui.pfUploading--; setPfLines([...pfLines(), url]);
+    }catch(e){ ui.pfUploading--; renderPfPhotos(); toast(e && e.message && e.message!=='net' ? e.message : 'Could not upload that photo. Check your connection and try again.'); }
+  }
+}
 function submitProduct(form){
+  if (ui.pfUploading > 0){ toast('Please wait for the photos to finish uploading.'); return; }
   const fd = new FormData(form), f = Object.fromEntries(fd);
   const durations = fd.getAll('dur').map(Number).sort((a,b)=>a-b);
   const price = +f.price, dpValue = +f.dpValue;
@@ -1574,7 +1616,7 @@ function submitApprove(form){
 
 /* ---------- Reviews & customer photos (owner) ---------- */
 function compressImage(file, max=900, q=0.78){
-  return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const sc=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); c.getContext('2d').drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
+  return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const sc=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
 }
 function ownerReviews(){
   const R = S.reviews||[], G = S.gallery||[];
@@ -2377,6 +2419,7 @@ function renderModal(){
   const sheet = ['offer','custom','review'].includes(M.kind);
   modalRoot.innerHTML = `<div class="overlay${sheet?' sheetmode':''}${wasOpen?'':' enter'}" data-act="backdrop"><div class="modal ${narrow?'narrow':''}${sheet?' sheet':''}" role="dialog" aria-modal="true" tabindex="-1">${html}</div></div>`;
   if (keep){ const nf = modalRoot.querySelector(`form[data-form="${keep[0]}"]`); if (nf) keep[1].forEach(([n,ty,v,c])=>nf.querySelectorAll(`[name="${CSS.escape(n)}"]`).forEach(el=>{ if (ty==='checkbox'||ty==='radio'){ if (el.value===v) el.checked=c; } else if (el.type===ty) el.value=v; })); }
+  if (modalRoot.querySelector('#pf-photos')) renderPfPhotos();
   document.body.style.overflow='hidden';
   if (!wasOpen) lastFocus = document.activeElement;
   const first = (sheet && isPhone()) ? modalRoot.querySelector('.modal') : modalRoot.querySelector('input:not([type=checkbox]),[aria-checked="true"],.btn.primary,button');
@@ -2445,8 +2488,8 @@ document.addEventListener('click', e=>{
     case 'copy-msgr': copy(document.getElementById('msgr-text').textContent); break;
     case 'close': closeModal(); break;
     case 'tab': location.hash = 'owner-'+el.dataset.tab; if (API_URL && canRefresh()) setTimeout(()=>{ if (canRefresh()) ownerLoad(true); }, 0); break;
-    case 'prod-new': M={kind:'product',id:null,err:''}; renderModal(); break;
-    case 'prod-edit': M={kind:'product',id,err:''}; renderModal(); break;
+    case 'prod-new': ui.pfUploading=0; M={kind:'product',id:null,err:''}; renderModal(); break;
+    case 'prod-edit': ui.pfUploading=0; M={kind:'product',id,err:''}; renderModal(); break;
     case 'prod-del': ui.pendingDelete=id; render(); break;
     case 'prod-del-cancel': ui.pendingDelete=null; render(); break;
     case 'prod-del-confirm': S.products=S.products.filter(p=>p.id!==id); ui.pendingDelete=null; save(); render(); toast('Product removed'); break;
@@ -2490,6 +2533,8 @@ document.addEventListener('click', e=>{
     case 'copy-rem': { const a=S.accounts.find(x=>x.id===el.dataset.a), it=a.schedule.find(i=>i.n===+el.dataset.n); copy(reminderText(a,it)); break; }
     case 'mark-rem': { const a=S.accounts.find(x=>x.id===el.dataset.a), it=a.schedule.find(i=>i.n===+el.dataset.n); it.reminded=today(); save(); render(); toast('Marked as reminded'); break; }
     case 'export': ui.exportOpen=!ui.exportOpen; render(); break;
+    case 'pf-ph-del': { const l=pfLines(); l.splice(+el.dataset.i,1); setPfLines(l); break; }
+    case 'pf-ph-main': { const l=pfLines(), x=l.splice(+el.dataset.i,1); setPfLines([...x, ...l]); break; }
     case 'sync-refresh': if (SY.dirty||SY.busy){ toast('Saving your changes first…'); syncPush(); } else ownerLoad(true).then(ok=>toast(ok?'Up to date':'Could not reach Google Sheets')); break;
     case 'sign-out': if (SY.dirty||SY.busy){ toast('Still saving. Try again in a moment.'); break; } api({action:'logout', token:SY.token}).catch(()=>{}); signOutLocal(); break;
     case 'move-local': moveLocalData(); break;
@@ -2512,6 +2557,7 @@ document.addEventListener('change', e=>{
     else { const fr=new FileReader(); fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const sc=Math.min(1,256/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); c.getContext('2d').drawImage(img,0,0,c.width,c.height); done(c.toDataURL('image/png')); }; img.src=fr.result; }; fr.readAsDataURL(f); }
     return;
   }
+  if (tg.dataset && tg.dataset.pfphotos && tg.files && tg.files.length){ const fl=[...tg.files]; tg.value=''; addProductPhotos(fl); return; }
   if (tg.id==='shop-sort'){ ui.sort=tg.value; ui.shown=0; updateCatalog(); return; }
   if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); toast('Banner saved'); return; }
   if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); compressImage(tg.files[0],1400,0.8).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
@@ -2549,6 +2595,7 @@ document.addEventListener('change', e=>{
   if (t.id) modalRoot.querySelector('#'+CSS.escape(t.id))?.focus();
 });
 document.addEventListener('input', e=>{
+  if (e.target.id==='pf-img'){ renderPfPhotos(); return; }
   if (e.target.id==='shop-search'){
     ui.q = e.target.value; ui.shown = 0; updateCatalog();
   }
