@@ -38,8 +38,8 @@ const LAYOUT = {
   gallery: { tab: 'Photos', cols: ['ID', 'Caption', 'Shown'], row: g => [g.id, g.caption, g.visible === false ? '' : 'Yes'] },
 };
 const SETTINGS_TAB = 'Settings';
-const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial'];
-const DEFAULT_SETTINGS = { shopName: 'AbotVida', tagline: 'Mas abot, mas saya.', logo: '', messengerUrl: 'https://m.me/', ownerEmail: '', dueSoonDays: 7,
+const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial', 'shopInfo'];   // shopInfo: Facebook Page, location, hours, delivery areas, DTI no., privacy email
+const DEFAULT_SETTINGS = { shopName: 'AbotVida', tagline: 'Mas abot, mas saya.', logo: '', messengerUrl: 'https://m.me/', ownerEmail: '', dueSoonDays: 7, shopInfo: {},
   penaltyEn: 'A penalty is added for every late payment. Please pay on or before your due date.',
   reminderTemplate: 'Hi {name}, this is a friendly reminder that your installment payment of {amount} is due on {date}. Please message us if you have any questions. Thank you!' };
 
@@ -170,6 +170,7 @@ function checkPerson(b) {
 function submitQuote(b) {
   const who = checkPerson(b), s = readSettings();
   if (s.penaltyEn && !b.agree) fail('errAgree');
+  if (!b.privacy) fail('errPrivacy');                 // Data Privacy Act consent
   return withLock(() => {
     const p = readColl('products').filter(x => x.id === b.productId)[0];
     if (!p || p.status === 'Out of stock') fail('errGone');
@@ -177,7 +178,7 @@ function submitQuote(b) {
     throttle(digits(who.contact));
     const pl = plan(p.price, months), dp = dpOf(p);
     const rec = Object.assign({ id: 'MQ-' + nextQuoteNo(), createdAt: Date.now() }, who, { productId: p.id, productName: fullName(p), price: p.price,
-      months: months, dp: dp, monthly: pl.monthly, last: pl.last, total: round2(dp + p.price), status: 'Pending Review', sample: false, lang: 'en' });
+      months: months, dp: dp, monthly: pl.monthly, last: pl.last, total: round2(dp + p.price), status: 'Pending Review', sample: false, lang: 'en', privacyConsentAt: Date.now() });
     appendRec('quotes', rec); notifyOwner(rec);
     return { ok: true, quote: rec };
   });
@@ -186,11 +187,12 @@ function submitCustom(b) {
   const who = checkPerson(b), s = readSettings(), item = clip(b.item, 200);
   if (!item) fail('errItem');
   if (s.penaltyEn && !b.agree) fail('errAgree');
+  if (!b.privacy) fail('errPrivacy');                 // Data Privacy Act consent
   const months = DURATIONS.indexOf(+b.months) >= 0 ? +b.months : 0;
   return withLock(() => {
     throttle(digits(who.contact));
     const rec = Object.assign({ id: 'MQ-' + nextQuoteNo(), createdAt: Date.now() }, who, { productId: null, productName: item, link: clip(b.link, 500),
-      price: 0, months: months, dp: 0, monthly: 0, last: 0, total: 0, status: 'Pending Review', custom: true, sample: false, lang: 'en' });
+      price: 0, months: months, dp: 0, monthly: 0, last: 0, total: 0, status: 'Pending Review', custom: true, sample: false, lang: 'en', privacyConsentAt: Date.now() });
     appendRec('quotes', rec); notifyOwner(rec);
     return { ok: true, quote: rec };
   });
