@@ -441,7 +441,6 @@ section.row{padding-block:18px 4px}
   .bnav > *{border:0;background:none;display:grid;justify-items:center;gap:2px;font-size:11.5px;font-weight:600;color:var(--muted);text-decoration:none;padding:4px;cursor:pointer;font-family:inherit}
   .bnav svg{width:22px;height:22px}
   body.is-shop:not(.is-product) #app{padding-bottom:calc(66px + env(safe-area-inset-bottom,0px))}
-  .owner-link{display:none}
 }
 /* Product page */
 .pbar .wrap{gap:8px}
@@ -959,7 +958,6 @@ function shopHeader(){
     <label class="topsearch">${I.search}<input id="shop-search" type="search" placeholder="${t('search')}" value="${esc(ui.q)}" aria-label="${t('search')}" enterkeyhint="search"></label>
     ${langToggle()}
     ${m?`<a class="iconbtn msgr" href="${esc(m)}" target="_blank" rel="noopener" aria-label="${t('message')}">${I.msgr}<span class="hide-sm">${t('message')}</span></a>`:''}
-    <a class="btn ghost sm owner-link" href="#owner">${t('owner')}</a>
   </div></header>`;
 }
 function bottomNav(){
