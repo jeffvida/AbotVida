@@ -1394,7 +1394,7 @@ function readImportFile(file){
   fr.onload = () => {
     try{
       let raw;
-      if (window.XLSX){ const wb = XLSX.read(isCSV ? fr.result : new Uint8Array(fr.result), {type: isCSV?'string':'array'}); raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''}); }
+      if (window.XLSX){ const wb = XLSX.read(isCSV ? fr.result : new Uint8Array(fr.result), {type: isCSV?'string':'array'}); raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:'', raw:false}); }
       else if (isCSV) raw = parseCSV(fr.result);
       else { M.err='The Excel reader did not load. Save the sheet as CSV and upload that instead.'; renderModal(); return; }
       if (!raw.length){ M.err='No rows found. Make sure the first row has column names and the products start on row 2.'; renderModal(); return; }
