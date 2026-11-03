@@ -617,6 +617,18 @@ a{color:var(--brand)}
 @media (max-width:780px){ .otable-wrap{display:none} .ocards{display:grid} }
 @media (max-width:560px){ .tile .t-val{font-size:20px;white-space:nowrap;overflow-wrap:normal} .tile{padding:12px 14px} }
 
+.ed-sec{background:var(--raised);border:1px solid var(--line);border-radius:var(--r);padding:0 16px;margin-bottom:14px}
+.ed-sec>summary{cursor:pointer;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 0;flex-wrap:wrap}
+.ed-sec>summary::-webkit-details-marker{display:none}
+.ed-sec>summary h3{font-size:17px;display:flex;gap:10px;align-items:center}
+.ed-sec>summary::after{content:"Edit";font-size:13px;font-weight:700;color:var(--brand);margin-left:auto}
+.ed-sec[open]>summary::after{content:"Close"}
+.ed-sec[open]{padding-bottom:14px}
+.ed-sec .rem{background:var(--bg)}
+.gtk-grid{grid-template-columns:minmax(0,1fr) 160px 200px auto;align-items:end}
+.faq-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.6fr) auto;align-items:start}
+.ed-row .acts{flex-wrap:nowrap}
+@media (max-width:900px){ .gtk-grid,.faq-grid{grid-template-columns:1fr} }
 .okline{font-size:13px;color:var(--ok)} .warnline{font-size:13px;color:var(--warn)}
 </style>
 
@@ -958,17 +970,31 @@ const t = k => LANG[ui.lang][k];
 
 const penaltyText = () => S.settings.penaltyEn || '';
 const isLarge = p => p.size ? p.size==='large' : ['TVs','Appliances','Furniture'].includes(p.category);
+const GTK_ICONS = {
+  shield:['Warranty','<path d="M10 2l6 2.5v5c0 4-2.7 6.6-6 8-3.3-1.4-6-4-6-8v-5z"/><path d="M7.2 10l2 2 3.6-3.8"/>'],
+  truck:['Delivery','<path d="M2 5h10v8H2zM12 8h3.5L18 11v2h-6"/><circle cx="5.5" cy="14.5" r="1.5"/><circle cx="14.5" cy="14.5" r="1.5"/>'],
+  card:['Payment','<rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/>'],
+  id:['ID / documents','<rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="8" cy="9" r="2"/><path d="M5.5 13.5c.6-1.3 1.5-2 2.5-2s1.9.7 2.5 2M12 8h3M12 11h2"/>'],
+  info:['Info','<circle cx="10" cy="10" r="8"/><path d="M10 9v5M10 6.2v.1"/>'],
+  clock:['Time','<circle cx="10" cy="10" r="8"/><path d="M10 5.5V10l3 2"/>'],
+};
+const GTK_WHEN = { all:'All items', small:'Small items only', large:'Large items only', notGroceries:'All except Groceries', groceries:'Groceries only' };
+const DEFAULT_GTK = [
+  {icon:'shield', text:'Brand new with store warranty', when:'notGroceries'},
+  {icon:'truck', text:'Free delivery or meet-up', when:'small'},
+  {icon:'truck', text:'Delivery charge is included in the price', when:'large'},
+  {icon:'card', text:'Pay monthly through GCash, mobile banking or cash', when:'all'},
+  {icon:'id', text:'Valid ID and ATM card needed once approved. Not needed to request a quote.', when:'all'},
+];
+const gtkList = () => Array.isArray(S.settings.goodToKnow) ? S.settings.goodToKnow : DEFAULT_GTK;
+function gtkApplies(w, p){ return w==='small' ? !isLarge(p) : w==='large' ? isLarge(p) : w==='notGroceries' ? p.category!=='Groceries' : w==='groceries' ? p.category==='Groceries' : true; }
 function infoBoxHTML(p){
   const ic = d => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
-  const rows = [
-    p.category!=='Groceries' ? [ic('<path d="M10 2l6 2.5v5c0 4-2.7 6.6-6 8-3.3-1.4-6-4-6-8v-5z"/><path d="M7.2 10l2 2 3.6-3.8"/>'), t('iWarranty')] : null,
-    [ic('<path d="M2 5h10v8H2zM12 8h3.5L18 11v2h-6"/><circle cx="5.5" cy="14.5" r="1.5"/><circle cx="14.5" cy="14.5" r="1.5"/>'), isLarge(p)?t('iDelLarge'):t('iDelSmall')],
-    [ic('<rect x="2" y="5" width="16" height="11" rx="2"/><path d="M2 9h16"/>'), t('iPay')],
-    [ic('<rect x="3" y="4" width="14" height="12" rx="2"/><circle cx="8" cy="9" r="2"/><path d="M5.5 13.5c.6-1.3 1.5-2 2.5-2s1.9.7 2.5 2M12 8h3M12 11h2"/>'), t('iReq')],
-  ].filter(Boolean);
+  const rows = gtkList().filter(g=>String(g.text||'').trim() && gtkApplies(g.when||'all', p));
+  if (!rows.length && !penaltyText()) return '';
   return `<div class="infobox">
     <p class="ib-title">${t('infoTitle')}</p>
-    ${rows.map(([i,txt])=>`<div class="ib-row">${i}<span>${txt}</span></div>`).join('')}
+    ${rows.map(g=>`<div class="ib-row">${ic((GTK_ICONS[g.icon]||GTK_ICONS.info)[1])}<span>${esc(g.text)}</span></div>`).join('')}
     ${penaltyText()?`<div class="penalty" role="note">${ic('<path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/>')}<div><b>${t('penaltyTitle')}</b><span>${esc(penaltyText())}</span></div></div>`:''}
   </div>`;
 }
@@ -992,18 +1018,27 @@ function trustHTML(){
   ];
   return `<section class="trust home-only" aria-label="${t('trustLbl')}"><div class="wrap"><ul>${items.map(([i,x])=>`<li>${i}<span>${x}</span></li>`).join('')}</ul></div></section>`;
 }
-function faqHTML(){
+const DEFAULT_FAQ = [
+  {q:'What do I need to request an item?', a:"Just your name and mobile number. Once your request is approved, we'll ask for a valid ID and your ATM card."},
+  {q:'How does the payment work?', a:'You pay a one-time service charge before we buy your item. It is not deducted from the item price. The item price is then split into monthly payments, rounded to whole pesos, with a slightly smaller last month. Total payment = service charge + item price.'},
+  {q:'How do I pay every month?', a:"Through GCash, mobile banking or cash. We'll remind you before your due date."},
+  {q:'What happens if I pay late?', a:'{penalty}'},
+  {q:'Do you deliver?', a:'Small items have free delivery or meet-up. For large items, the delivery charge is already included in the price. {deliveryAreas}'},
+  {q:'Are the items brand new?', a:'Yes. All items are brand new and come with store warranty.'},
+  {q:"Can I request an item that isn't listed?", a:'Yes. Tap "Request any item" and send us the item name or a link. We\'ll send you the price, service charge and monthly amount.'},
+];
+const reqTerms = () => (Array.isArray(S.settings.reqTerms) && S.settings.reqTerms.length ? S.settings.reqTerms : DURATIONS).filter(d=>DURATIONS.includes(d)).sort((a,b)=>a-b);
+const faqList = () => Array.isArray(S.settings.faq) ? S.settings.faq : DEFAULT_FAQ;
+function faqFill(a){
   const si = shopInfo();
-  const qa = [
-    ['What do I need to request an item?', 'Just your name and mobile number. Once your request is approved, we\'ll ask for a valid ID and your ATM card.'],
-    ['How does the payment work?', 'You pay a one-time service charge before we buy your item. It is not deducted from the item price. The item price is then split into monthly payments, rounded to whole pesos, with a slightly smaller last month. Total payment = service charge + item price.'],
-    ['How do I pay every month?', 'Through GCash, mobile banking or cash. We\'ll remind you before your due date.'],
-    ['What happens if I pay late?', penaltyText() || 'Please message us before your due date if you can\'t pay on time.'],
-    ['Do you deliver?', 'Small items have free delivery or meet-up. For large items, the delivery charge is already included in the price.' + (si.deliveryAreas ? ' We deliver to: ' + si.deliveryAreas + '.' : ' Message us to check if we deliver to your area.')],
-    ['Are the items brand new?', 'Yes. All items are brand new and come with store warranty.'],
-    ['Can I request an item that isn\'t listed?', 'Yes. Tap "Request any item" and send us the item name or a link. We\'ll send you the price, service charge and monthly amount.'],
-  ];
-  return `<section class="block faq home-only" id="faq"><div class="wrap"><h2>${t('faqH')}</h2>${qa.map(([q,a])=>`<details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('')}</div></section>`;
+  return String(a||'')
+    .split('{penalty}').join(penaltyText() || "Please message us before your due date if you can't pay on time.")
+    .split('{deliveryAreas}').join(si.deliveryAreas ? 'We deliver to: ' + si.deliveryAreas + '.' : 'Message us to check if we deliver to your area.');
+}
+function faqHTML(){
+  const qa = faqList().filter(x=>String(x.q||'').trim() && String(x.a||'').trim());
+  if (!qa.length) return '';
+  return `<section class="block faq home-only" id="faq"><div class="wrap"><h2>${t('faqH')}</h2>${qa.map(x=>`<details><summary>${esc(x.q)}</summary><p>${esc(faqFill(x.a))}</p></details>`).join('')}</div></section>`;
 }
 function footerInfoHTML(){
   const si = shopInfo(), bits = [];
@@ -1351,7 +1386,7 @@ function customHTML(){
     <p class="muted">${t('reqSub')}</p>
     <div class="field"><label for="cr-item">${t('itemName')}</label><input class="input" id="cr-item" name="item" placeholder="${t('itemPh')}"></div>
     <div class="field"><label for="cr-link">${t('link')} <span class="hint">${t('optional')}</span></label><input class="input" id="cr-link" name="link" inputmode="url" placeholder="${t('linkPh')}"></div>
-    <div class="field"><label for="cr-term">${t('prefTerm')}</label><select class="input" id="cr-term" name="months"><option value="">${t('notSure')}</option>${DURATIONS.map(d=>`<option value="${d}">${t('months')(d)}</option>`).join('')}</select></div>
+    <div class="field"><label for="cr-term">${t('prefTerm')}</label><select class="input" id="cr-term" name="months"><option value="">${t('notSure')}</option>${reqTerms().map(d=>`<option value="${d}">${t('months')(d)}</option>`).join('')}</select></div>
     <div class="row2">
       <div class="field"><label for="cr-name">${t('fullName')}</label><input class="input" id="cr-name" name="name" autocomplete="name"></div>
       <div class="field"><label for="cr-contact">${t('contact')}</label><input class="input" id="cr-contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX"></div>
@@ -1863,13 +1898,44 @@ function submitApprove(form){
 function compressImage(file, max=900, q=0.78){
   return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const sc=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
 }
+function shopTextEditorsHTML(){
+  const G = gtkList(), F = faqList(), RT = reqTerms(), custom = k => Array.isArray(S.settings[k]);
+  const mv = (kind,i,n) => `<button type="button" class="iconbtn sm" data-act="${kind}-up" data-i="${i}" aria-label="Move up" ${i===0?'disabled':''}>↑</button><button type="button" class="iconbtn sm" data-act="${kind}-down" data-i="${i}" aria-label="Move down" ${i===n-1?'disabled':''}>↓</button><button type="button" class="iconbtn sm" data-act="${kind}-del" data-i="${i}" aria-label="Remove">${TRASH}</button>`;
+  return `<details class="ed-sec" data-sec="gtk" ${edOpen('gtk')}><summary><h3>Good to know <span class="pill plain">${G.length}</span></h3><span class="small muted">Product page list</span></summary>
+    <p class="small muted" style="margin-bottom:10px">The list on every product page. Choose which products each line appears on. The late payment penalty box is added after it (edit it in Settings).</p>
+    ${G.map((g,i)=>`<div class="rem ed-row gtk-grid">
+      <div class="field"><label for="gtk-t-${i}">Text</label><input class="input" id="gtk-t-${i}" data-gtk="${i}" data-field="text" value="${esc(g.text||'')}"></div>
+      <div class="field"><label for="gtk-i-${i}">Icon</label><select class="input" id="gtk-i-${i}" data-gtk="${i}" data-field="icon">${Object.entries(GTK_ICONS).map(([k,[l]])=>`<option value="${k}" ${g.icon===k?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label for="gtk-w-${i}">Shows on</label><select class="input" id="gtk-w-${i}" data-gtk="${i}" data-field="when">${Object.entries(GTK_WHEN).map(([k,l])=>`<option value="${k}" ${(g.when||'all')===k?'selected':''}>${l}</option>`).join('')}</select></div>
+      <div class="acts">${mv('gtk',i,G.length)}</div></div>`).join('')}
+    <div class="acts"><button class="btn sm" data-act="gtk-add">+ Add line</button>${custom('goodToKnow')?`<button class="btn sm ghost" data-act="gtk-reset">Restore the original list</button>`:''}</div>
+  </details>
+  <details class="ed-sec" data-sec="faq" ${edOpen('faq')}><summary><h3>Questions (FAQ) <span class="pill plain">${F.length}</span></h3><span class="small muted">Shown near the bottom of the shop</span></summary>
+    <p class="small muted" style="margin-bottom:10px">Shown near the bottom of the shop. In answers, <b>{penalty}</b> becomes your late payment penalty text and <b>{deliveryAreas}</b> your delivery areas from Settings.</p>
+    ${F.map((x,i)=>`<div class="rem ed-row faq-grid">
+      <div class="field"><label for="faq-q-${i}">Question</label><input class="input" id="faq-q-${i}" data-faq="${i}" data-field="q" value="${esc(x.q||'')}"></div>
+      <div class="field"><label for="faq-a-${i}">Answer</label><textarea class="input" id="faq-a-${i}" data-faq="${i}" data-field="a" style="min-height:70px">${esc(x.a||'')}</textarea></div>
+      <div class="acts">${mv('faq',i,F.length)}</div></div>`).join('')}
+    <div class="acts"><button class="btn sm" data-act="faq-add">+ Add question</button>${custom('faq')?`<button class="btn sm ghost" data-act="faq-reset">Restore the original questions</button>`:''}</div>
+  </details>
+  <details class="ed-sec" data-sec="rt" ${edOpen('rt')}><summary><h3>Months for "Request any item"</h3><span class="small muted">${RT.map(d=>d).join(', ')} months</span></summary>
+    <p class="small muted" style="margin-bottom:10px">The choices customers see under "Preferred number of months" when they request an item that isn't in your catalog. "Not sure yet" is always there. Catalog products use the terms set on each product.</p>
+    <div class="checks">${DURATIONS.map(d=>`<label><input type="checkbox" data-rterm="${d}" ${RT.includes(d)?'checked':''}> ${mos(d)}</label>`).join('')}</div>
+  </details>`;
+}
+ui.edOpen = {};
+const edOpen = k => ui.edOpen[k] ? 'open' : '';
+// Remember which editor sections are open, so adding or moving a line keeps them open.
+document.addEventListener('toggle', e=>{ const d=e.target; if (d && d.matches && d.matches('details.ed-sec')) ui.edOpen[d.dataset.sec] = d.open; }, true);
+function editList(key, defaults){ if (!Array.isArray(S.settings[key])) S.settings[key] = defaults.map(x=>({...x})); return S.settings[key]; }
 function ownerReviews(){
   const R = S.reviews||[], G = S.gallery||[];
   const pend = R.filter(r=>r.status==='Pending').sort((a,b)=>b.at-a.at), shown = R.filter(r=>r.status==='Approved').sort((a,b)=>b.at-a.at), hidden = R.filter(r=>r.status==='Hidden');
   const row = (r, acts) => `<div class="rem"><div class="top"><div>${stars(r.rating)} <b style="margin-left:6px">${esc(r.name)}</b>${r.item?` <span class="muted small">· ${esc(r.item)}</span>`:''}<p class="small muted">${fdt(r.at)}</p></div></div><div class="msg" style="user-select:text">${esc(r.text)}</div><div class="acts">${acts}</div></div>`;
   const BN = S.banners||[];
   const actOpts = [['','No link'],['req-any','Open "Request any item"'],['hot','Show Hot picks'],...CATS.map(c=>['cat:'+c,'Show '+c])];
-  return `<div class="o-head"><div><h2>Shop page</h2><p class="muted small">Banners at the top of the shop, customer photos and reviews. Reviews appear only after you approve them.</p></div></div>
+  return `<div class="o-head"><div><h2>Shop page</h2><p class="muted small">What customers see: banners, Good to know, questions, month choices, customer photos and reviews. Changes save as you type.</p></div></div>
+  ${shopTextEditorsHTML()}
   <div class="rem-group"><h3>Banners <span class="pill plain">${BN.length}</span></h3>
     <p class="small muted" style="margin-bottom:10px">Text banners work right away. You can also upload a banner image (wide, about 1200 × 500). Customers swipe through them.</p>
     ${BN.map(b=>`<div class="rem">
@@ -2761,6 +2827,12 @@ document.addEventListener('click', e=>{
     case 'rev-del': ui.pendingRevDel=id; render(); break;
     case 'rev-del-no': ui.pendingRevDel=null; render(); break;
     case 'rev-del-yes': S.reviews=S.reviews.filter(r=>r.id!==id); ui.pendingRevDel=null; save(); render(); toast('Review deleted'); break;
+    case 'gtk-add': editList('goodToKnow', DEFAULT_GTK).push({icon:'info', text:'', when:'all'}); save(); render(); setTimeout(()=>document.getElementById('gtk-t-'+(S.settings.goodToKnow.length-1))?.focus(),0); break;
+    case 'faq-add': editList('faq', DEFAULT_FAQ).push({q:'', a:''}); save(); render(); setTimeout(()=>document.getElementById('faq-q-'+(S.settings.faq.length-1))?.focus(),0); break;
+    case 'gtk-up': case 'gtk-down': case 'faq-up': case 'faq-down': { const [kind,dir]=act.split('-'), L=editList(kind==='gtk'?'goodToKnow':'faq', kind==='gtk'?DEFAULT_GTK:DEFAULT_FAQ), i=+el.dataset.i, j=dir==='up'?i-1:i+1; if (j<0||j>=L.length) break; [L[i],L[j]]=[L[j],L[i]]; save(); render(); break; }
+    case 'gtk-del': case 'faq-del': { const kind=act.split('-')[0], L=editList(kind==='gtk'?'goodToKnow':'faq', kind==='gtk'?DEFAULT_GTK:DEFAULT_FAQ); L.splice(+el.dataset.i,1); save(); render(); toast('Removed'); break; }
+    case 'gtk-reset': S.settings.goodToKnow = null; save(); render(); toast('Original list restored'); break;
+    case 'faq-reset': S.settings.faq = null; save(); render(); toast('Original questions restored'); break;
     case 'ban-add': S.banners.push({id:uid('b'),titleEn:'New banner',subEn:'',titleTl:'',subTl:'',action:'',tone:['a','b','c'][S.banners.length%3],img:'',visible:true}); save(); render(); break;
     case 'ban-del': S.banners=S.banners.filter(b=>b.id!==id); save(); render(); toast('Banner removed'); break;
     case 'ban-noimg': { const b=S.banners.find(x=>x.id===id); b.img=''; save(); render(); break; }
@@ -2854,6 +2926,9 @@ document.addEventListener('change', e=>{
   if (tg.id==='shop-sort'){ ui.sort=tg.value; ui.shown=0; updateCatalog(); return; }
   if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); toast('Banner saved'); return; }
   if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); compressImage(tg.files[0],1400,0.8).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
+  if (tg.dataset && tg.dataset.gtk !== undefined){ const L=editList('goodToKnow', DEFAULT_GTK), g=L[+tg.dataset.gtk]; if (g){ g[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
+  if (tg.dataset && tg.dataset.faq !== undefined){ const L=editList('faq', DEFAULT_FAQ), x=L[+tg.dataset.faq]; if (x){ x[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
+  if (tg.dataset && tg.dataset.rterm){ const on=[...document.querySelectorAll('[data-rterm]:checked')].map(x=>+x.dataset.rterm); if (!on.length){ tg.checked=true; toast('Keep at least one month choice'); return; } S.settings.reqTerms = on; save(); toast('Saved'); return; }
   if (tg.dataset && tg.dataset.soc==='show'){ S.settings.showSocial = tg.checked; save(); toast(tg.checked?'Section shown on the shop':'Section hidden from the shop'); return; }
   if (tg.dataset && tg.dataset.gal && tg.files && tg.files[0]){
     const g = S.gallery.find(x=>x.id===tg.dataset.gal);

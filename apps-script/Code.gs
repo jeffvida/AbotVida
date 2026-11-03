@@ -40,7 +40,7 @@ const LAYOUT = {
   gallery: { tab: 'Photos', cols: ['ID', 'Caption', 'Shown'], row: g => [g.id, g.caption, g.visible === false ? '' : 'Yes'] },
 };
 const SETTINGS_TAB = 'Settings';
-const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial', 'shopInfo'];   // shopInfo: Facebook Page, location, hours, delivery areas, DTI no., privacy email
+const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial', 'shopInfo', 'goodToKnow', 'faq', 'reqTerms'];   // shopInfo: Facebook Page, location, hours, delivery areas, DTI no., privacy email
 const DEFAULT_SETTINGS = { shopName: 'AbotVida', tagline: 'Mas abot, mas saya.', logo: '', messengerUrl: 'https://m.me/', ownerEmail: '', dueSoonDays: 7, shopInfo: {},
   penaltyEn: 'A penalty is added for every late payment. Please pay on or before your due date.',
   reminderTemplate: 'Hi {name}, this is a friendly reminder that your installment payment of {amount} is due on {date}. Please message us if you have any questions. Thank you!' };
