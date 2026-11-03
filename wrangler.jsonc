@@ -1,0 +1,6 @@
+{
+  // Cloudflare serves the files in ./site as the AbotVida website.
+  "name": "abotvida",
+  "compatibility_date": "2026-11-01",
+  "assets": { "directory": "./site" }
+}
