@@ -592,6 +592,31 @@ a{color:var(--brand)}
 .ownerbtn{color:var(--brand)}
 @media (max-width:560px){ .ownerbtn .hide-sm{display:none} }
 @media (max-width:560px){ header.top:not(.shopbar):not(.pbar) .lname{display:none} }
+
+/* v4: product cards show the amount to start; compact how-it-works */
+.pstart{font-size:12px;font-weight:700;color:var(--brand-ink)}
+.how3{padding-block:12px 0}
+.how3 ol{list-style:none;margin:0;padding:12px 14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:18px}
+.how3 li{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:600;line-height:1.3;min-width:0}
+.how3 .n{flex:none;width:24px;height:24px;border-radius:50%;background:var(--brand-tint);color:var(--brand-ink);display:grid;place-items:center;font-size:12.5px;font-weight:800}
+@media (max-width:560px){ .how3 li{flex-direction:column;align-items:flex-start;font-size:12.5px} }
+/* v4: owner tables compact on laptops, cards on phones */
+.otable td,.otable th{padding:10px 12px}
+.otable th.stick,.otable td.stick{position:sticky;right:0;background:var(--raised);box-shadow:-8px 0 12px -10px rgba(16,53,104,.35)}
+.otable thead th.stick{background:var(--surface)}
+.ocards{display:none;gap:10px}
+.ocard{display:grid;gap:8px;background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.ocard[data-act]{cursor:pointer}
+.ocard .oc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ocard b{display:block;line-height:1.3}
+.ocard .oc-item{display:inline}
+.ocard .meta{display:block;font-size:13px;color:var(--muted)}
+.ocard .oc-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
+.ocard .oc-row b{display:inline}
+.ocard .oc-acts{display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:780px){ .otable-wrap{display:none} .ocards{display:grid} }
+@media (max-width:560px){ .tile .t-val{font-size:20px;white-space:nowrap;overflow-wrap:normal} .tile{padding:12px 14px} }
+
 .okline{font-size:13px;color:var(--ok)} .warnline{font-size:13px;color:var(--warn)}
 </style>
 
@@ -658,9 +683,13 @@ const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 /* ---------- business rules ---------- */
 // Service charge (the upfront "DP") is separate revenue. It never touches the cash price or the monthly amount.
 function dpOf(p){ return p.dpType === 'percent' ? Math.round(p.price * p.dpValue / 100) : +p.dpValue; }
-// Monthly = cash price ÷ months, rounded to centavos. The last month absorbs rounding so the total equals the cash price exactly.
+// Monthly = item price ÷ months, rounded UP to the next whole peso. The last month is a little smaller,
+// so the total still equals the item price exactly. (Falls back to centavos only for very small prices.)
 function plan(price, months){
-  const c = Math.round(price*100), m = Math.round(c/months), last = c - m*(months-1);
+  const c = Math.round(price*100);
+  if (months <= 1) return { monthly: c/100, last: c/100 };
+  let m = Math.ceil(c/months/100)*100, last = c - m*(months-1);
+  if (last <= 0){ m = Math.round(c/months); last = c - m*(months-1); }
   return { monthly: m/100, last: last/100 };
 }
 function quoteFor(p, months){
@@ -914,6 +943,7 @@ const LANG = {
     sending:'Sending…', errNet:'We couldn\'t send this. Check your connection and try again, or message us on Messenger.', errBusy:'We\'re getting a lot of requests right now. Please try again later or message us.',
     errGone:'This item or term is no longer available. Please refresh the page.', loading:'Loading products…', noProducts:'New items are coming soon. Tap "Request any item" below or message us for what you need.', loadFail:'We couldn\'t load the products. Check your connection and refresh the page.',
     footerLive:'AbotVida is an independent store and is not affiliated with the brands or retailers shown.',
+    toStart:x=>`${x} to start`, howShort:'How it works', st1:'Pick an item and term', st2:'Send a request', st3:'Pay the service charge, then monthly',
     trustLbl:'Why shop with us', trust1:'Brand new with store warranty', trust2:'Pay by GCash, bank or cash', trust3:'Free delivery on small items', trust4:'Flexible monthly terms',
     faqH:'Questions', privacy:'Privacy notice', readPrivacy:'Read the privacy notice',
     consent:'I agree that AbotVida may collect and use my details to process this request and contact me, as described in the privacy notice.',
@@ -966,7 +996,7 @@ function faqHTML(){
   const si = shopInfo();
   const qa = [
     ['What do I need to request an item?', 'Just your name and mobile number. Once your request is approved, we\'ll ask for a valid ID and your ATM card.'],
-    ['How does the payment work?', 'You pay a one-time service charge before we buy your item. The item price is then split into equal monthly payments. Total payment = service charge + item price.'],
+    ['How does the payment work?', 'You pay a one-time service charge before we buy your item. It is not deducted from the item price. The item price is then split into monthly payments, rounded to whole pesos, with a slightly smaller last month. Total payment = service charge + item price.'],
     ['How do I pay every month?', 'Through GCash, mobile banking or cash. We\'ll remind you before your due date.'],
     ['What happens if I pay late?', penaltyText() || 'Please message us before your due date if you can\'t pay on time.'],
     ['Do you deliver?', 'Small items have free delivery or meet-up. For large items, the delivery charge is already included in the price.' + (si.deliveryAreas ? ' We deliver to: ' + si.deliveryAreas + '.' : ' Message us to check if we deliver to your area.')],
@@ -1047,6 +1077,7 @@ function cardHTML(p){
       ${tags?`<div class="tags">${tags}</div>`:''}
       <div class="pmo num">${peso(o.monthly)}<small>${longest===1?' '+t('in1'):t('perMo')}</small></div>
       <div class="pmeta num">${longest===1?'':t('moShort')(longest)+' · '}${t('totalShort')} ${peso(o.total)}</div>
+      ${o.dp>0?`<div class="pstart num">${t('toStart')(peso(o.dp))}</div>`:''}
       ${sold?`<div class="psold">${t('sold')(sold)}</div>`:''}
     </div></a>`;
 }
@@ -1117,6 +1148,8 @@ function bottomNav(){
     ${m?`<a href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>Messenger</span></a>`:`<button disabled>${I.msgr}<span>Messenger</span></button>`}
   </nav>`;
 }
+// Hot picks only once the catalog is bigger than one page; before that it would repeat the same items.
+const showHot = () => S.products.filter(p=>p.status!=='Out of stock').length > pageSize();
 function renderShop(){
   if (view==='product') return renderProduct();
   const hot = S.products.filter(p=>p.hot && p.status!=='Out of stock').slice(0,10);
@@ -1126,19 +1159,13 @@ function renderShop(){
     ${bannersHTML()}
     ${trustHTML()}
     <section class="cats home-only" id="cats"><div class="wrap">${catsHTML()}</div></section>
-    ${rowHTML('hot', t('hotEyebrow'), hot, `<button class="linkbtn small" data-act="hot-only">${t('seeAll')} ›</button>`)}
+    <section class="how3 home-only" id="how" aria-label="${t('howShort')}"><div class="wrap"><ol>
+      <li><span class="n">1</span><span>${t('st1')}</span></li><li><span class="n">2</span><span>${t('st2')}</span></li><li><span class="n">3</span><span>${t('st3')}</span></li>
+    </ol></div></section>
+    ${showHot()?rowHTML('hot', t('hotEyebrow'), hot, `<button class="linkbtn small" data-act="hot-only">${t('seeAll')} ›</button>`):''}
     ${rowHTML('recent', t('recent'), recent)}
     <section class="block" id="catalogwrap"><div class="wrap" id="catalog">${catalogHTML()}</div></section>
     <div class="home-only">${socialHTML()}</div>
-    <section class="block how home-only" id="how"><div class="wrap">
-      <h2>${t('howH')}</h2>
-      <ol class="steps">
-        <li><b>${t('s1t')}</b><span>${t('s1')}</span></li>
-        <li><b>${t('s2t')}</b><span>${t('s2')}</span></li>
-        <li><b>${t('s3t')}</b><span>${t('s3')}</span></li>
-      </ol>
-      <div class="formulas"><p>${t('fNote')}</p><div class="formula">${t('f1')}</div><div class="formula">${t('f2')}</div></div>
-    </div></section>
     ${faqHTML()}
     <footer><div class="wrap"><div class="fbrand"><span class="flock">${logoMark()}${wordmark()}</span><span class="tagline">${esc(S.settings.tagline||'')}</span><span class="small muted">${t('descriptor')}</span>${footerInfoHTML()}</div><span data-act="owner-tap" style="user-select:none">© ${new Date().getFullYear()} ${esc(S.settings.shopName)} · Philippines</span><span class="flinks"><button class="linkbtn small" data-act="review-open">${t('reviewCta')} ${t('writeReview')}</button><button class="linkbtn small" data-act="privacy-open">${t('privacy')}</button></span><span>${protoOn()?t('footer'):t('footerLive')}</span></div></footer>
   </main>
@@ -1447,6 +1474,7 @@ function todoHTML(){
   if (!si.dtiNo) list.push('DTI registration number');
   if (!si.privacyEmail) list.push('Privacy contact email');
   if (API_URL && !s.ownerEmail) list.push('Owner email for new-request alerts');
+  if (!s.newCustLimit) list.push('First-purchase limit (optional)');
   if (!list.length) return '';
   return `<div class="panel" style="margin-top:18px"><div class="p-head"><h3>Still to fill in</h3><button class="btn ghost sm" data-act="tab" data-tab="settings">Open Settings</button></div>
     <div class="list">${list.map(x=>`<div class="li"><span>${esc(x)}</span><span class="pill warn">Not set</span></div>`).join('')}</div>
@@ -1732,29 +1760,48 @@ function applyImport(){
 }
 
 /* ---------- Quotes ---------- */
+function quoteActions(q){
+  return q.status==='Pending Review' ? `<button class="btn sm primary" data-act="approve" data-id="${q.id}">Approve</button><button class="btn sm" data-act="decline" data-id="${q.id}">Decline</button>`
+    : q.status==='Approved' ? `<button class="btn sm" data-act="open-acct" data-id="${q.accountId||''}">Account</button><button class="btn sm ghost" data-act="complete" data-id="${q.id}">Mark completed</button>`
+    : q.status==='Declined' ? `<button class="btn sm ghost" data-act="reopen" data-id="${q.id}">Reopen</button>`
+    : (q.accountId?`<button class="btn sm" data-act="open-acct" data-id="${q.accountId}">Account</button>`:'');
+}
 function ownerQuotes(){
   const statuses = ['Pending Review','Approved','Declined','Completed','All'];
   const list = S.quotes.filter(q=>ui.quoteFilter==='All'||q.status===ui.quoteFilter).sort((a,b)=>b.createdAt-a.createdAt);
+  const prodLine = q => `${q.custom&&!q.price ? `${q.months?'Prefers '+mos(q.months):'Term not decided'}${q.link?` · <a href="${esc(linkify(q.link))}" target="_blank" rel="noopener">Item link</a>`:''}` : `${mos(q.months)} · price ${peso(q.price)}`}`;
+  const money = q => q.custom&&!q.price ? 'Price to be quoted' : `${peso(q.dp)} to start · ${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'} · total ${peso(q.total)}`;
   return `
   <div class="o-head"><div><h2>Quote requests</h2><p class="muted small">Review each request, confirm with the customer on Messenger, then approve to create an installment account.</p></div></div>
   <div class="toolbar"><div class="chips">${statuses.map(s=>`<button class="chip" data-act="qfilter" data-f="${s}" aria-pressed="${ui.quoteFilter===s}">${s}<span class="ct">${s==='All'?S.quotes.length:S.quotes.filter(q=>q.status===s).length}</span></button>`).join('')}</div></div>
-  ${list.length?`<div class="tablewrap"><table>
-    <thead><tr><th>Request</th><th>Customer</th><th>Product</th><th class="r">Service charge</th><th class="r">Monthly</th><th class="r">Total</th><th>Status</th><th class="r">Actions</th></tr></thead>
+  ${list.length?`<div class="tablewrap otable-wrap"><table class="otable">
+    <thead><tr><th>Request</th><th>Customer</th><th>Item</th><th class="r">Amounts</th><th>Status</th><th class="r stick">Actions</th></tr></thead>
     <tbody>${list.map(q=>`<tr>
       <td><b class="num">${esc(q.id)}</b><span class="sub">${fdt(q.createdAt)}${q.sample?' · Sample':''}</span></td>
       <td><b>${esc(q.name)}</b><span class="sub num">${esc(q.contact)}</span>${q.messenger?`<a class="small" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">Messenger</a>`:''}</td>
-      <td style="min-width:180px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}<span class="sub">${q.custom&&!q.price ? `${q.months?'Prefers '+mos(q.months):'Term not decided'}${q.link?` · <a href="${esc(linkify(q.link))}" target="_blank" rel="noopener">Item link</a>`:''}` : `${mos(q.months)} · price ${peso(q.price)}`}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}</td>
-      ${q.custom&&!q.price ? `<td class="r muted small" colspan="3">Price to be quoted</td>` : `<td class="r num">${peso(q.dp)}</td>
-      <td class="r num">${peso(q.monthly)}</td>
-      <td class="r num">${peso(q.total)}</td>`}
+      <td style="min-width:200px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}<span class="sub">${prodLine(q)}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}</td>
+      <td class="r num small">${q.custom&&!q.price?'<span class="muted">Price to be quoted</span>':`<b>${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'}</b><span class="sub">${peso(q.dp)} to start · total ${peso(q.total)}</span>`}</td>
       <td>${pill(q.status)}</td>
-      <td class="actions">${
-        q.status==='Pending Review' ? `<button class="btn sm primary" data-act="approve" data-id="${q.id}">Approve</button><button class="btn sm" data-act="decline" data-id="${q.id}">Decline</button>`
-        : q.status==='Approved' ? `<button class="btn sm" data-act="open-acct" data-id="${q.accountId||''}">Account</button><button class="btn sm ghost" data-act="complete" data-id="${q.id}">Mark completed</button>`
-        : q.status==='Declined' ? `<button class="btn sm ghost" data-act="reopen" data-id="${q.id}">Reopen</button>`
-        : (q.accountId?`<button class="btn sm" data-act="open-acct" data-id="${q.accountId}">Account</button>`:'')
-      }</td>
-    </tr>`).join('')}</tbody></table></div>`:`<div class="empty">No ${ui.quoteFilter==='All'?'':ui.quoteFilter.toLowerCase()+' '}requests.</div>`}`;
+      <td class="actions stick">${quoteActions(q)}</td>
+    </tr>`).join('')}</tbody></table></div>
+  <div class="ocards">${list.map(q=>`<div class="ocard">
+      <div class="oc-top"><div style="min-width:0"><b>${esc(q.name)}</b><span class="meta num">${esc(q.contact)} · ${esc(q.id)} · ${fdt(q.createdAt)}</span></div>${pill(q.status)}</div>
+      <div><b class="oc-item">${esc(q.productName)}</b>${q.custom?' <span class="pill info plain">Custom</span>':''}<span class="meta">${prodLine(q)}</span><span class="meta num">${money(q)}</span>${q.message?`<span class="meta" style="font-style:italic">"${esc(q.message)}"</span>`:''}</div>
+      <div class="oc-acts">${q.messenger?`<a class="btn sm" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">${I.msgr}<span>Messenger</span></a>`:''}${quoteActions(q)}</div>
+    </div>`).join('')}</div>`:`<div class="empty">No ${ui.quoteFilter==='All'?'':ui.quoteFilter.toLowerCase()+' '}requests.</div>`}`;
+}
+function approvalFlags(q, price){
+  const c = customers().get(ckey(q.contact)), st = c ? custStats(c) : null, out = [];
+  if (st && st.overdue) out.push(`${esc(q.name)} has ${st.overdue} overdue payment${st.overdue>1?'s':''} (${peso(st.outstanding)} outstanding).`);
+  const limit = +S.settings.newCustLimit || 0, proven = c && c.accounts.some(a=>!a.cancelled && acctStatus(a)==='Fully Paid');
+  if (limit && !proven && price > limit) out.push(`This is a first purchase above your first-purchase limit of ${peso(limit)} (item price ${peso(price)}).`);
+  return out;
+}
+function approvalChecksHTML(q){
+  const flags = approvalFlags(q, q.custom ? (M.apPrice||0) : q.price), limit = +S.settings.newCustLimit || 0;
+  const hint = q.custom && limit && !flags.length ? `<p class="small muted">First-purchase limit: ${peso(limit)}. You'll be asked to confirm if the price you enter is higher.</p>` : '';
+  return `${flags.length?`<div class="penalty" role="alert"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/></svg><div><b>Check before approving</b>${flags.map(x=>`<span style="display:block">${x}</span>`).join('')}</div></div>`:''}${hint}
+    ${flags.length?`<label for="ap-ovr" class="agree-line"><input type="checkbox" id="ap-ovr" name="override"> I've checked this and still want to approve</label>`:''}`;
 }
 function approveHTML(){
   const q = S.quotes.find(x=>x.id===M.id), T = today(), first = addMonths(T,1), cu = !!q.custom;
@@ -1767,8 +1814,9 @@ function approveHTML(){
       ${cu ? `${q.link?`<div><span>Link</span><b><a href="${esc(linkify(q.link))}" target="_blank" rel="noopener">Open link</a></b></div>`:''}<div><span>Preferred term</span><b>${q.months?mos(q.months):'Not sure'}</b></div>`
       : `<div><span>Item price</span><b>${peso(q.price)}</b></div>
       <div><span>Service charge (separate)</span><b>${peso(q.dp)}</b></div>
-      <div><span>${q.months===1?'Due after 1 month':'Monthly installment'}</span><b>${peso(q.monthly)}${q.months===1?'':' × '+q.months}${q.last!==q.monthly?` (last ${peso(q.last)})`:''}</b></div>`}
+      ${(()=>{ const pl=plan(q.price,q.months); return `<div><span>${q.months===1?'Due after 1 month':'Monthly installment'}</span><b>${peso(pl.monthly)}${q.months===1?'':' × '+q.months}${pl.last!==pl.monthly?` (last ${peso(pl.last)})`:''}</b></div>`; })()}`}
     </div>
+    ${approvalChecksHTML(q)}
     ${q.message?`<p class="small muted">Customer note: "${esc(q.message)}"</p>`:''}
     ${(()=>{ const c=customers().get(ckey(q.contact)); if(!c||!c.accounts.length) return ''; const st=custStats(c); return `<div class="callout" style="border-style:solid;margin:0">${I.info}<div><b>Returning customer.</b> ${c.accounts.length} earlier purchase${c.accounts.length>1?'s':''} · ${peso(st.outstanding)} outstanding · ${recordPill(st)} <button type="button" class="btn sm" style="margin-left:4px" data-act="open-cust" data-id="${esc(c.key)}">View customer</button></div></div>`; })()}
     ${cu ? `<p class="small muted">Set the terms you agreed with the customer on Messenger.</p>
@@ -1783,7 +1831,7 @@ function approveHTML(){
       <div class="field"><label for="ap-first">First due date</label><input class="input" type="date" id="ap-first" name="first" value="${first}" required><span class="hint">Monthly due day follows this date.</span></div>
     </div>
     <div class="field"><label for="ap-card">Credit card used to buy the item</label>${cardSelectHTML('ap-card','')}<span class="hint">You can set or change this later in Edit account.</span></div>
-    <label for="ap-dp" style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" name="dpPaid" id="ap-dp" checked> Service charge${cu?'':' of '+peso(q.dp)} received</label>
+    <label for="ap-dp" style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" name="dpPaid" id="ap-dp"> Service charge${cu?'':' of '+peso(q.dp)} already received</label>
     ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Approve and create account</button></div>
   </form></div>`;
@@ -1795,6 +1843,8 @@ function apSummary(price, sc, months){
 }
 function submitApprove(form){
   const f = Object.fromEntries(new FormData(form)), q = S.quotes.find(x=>x.id===M.id);
+  const price0 = q.custom ? r2(+f.price) : q.price; if (q.custom) M.apPrice = price0;
+  if (approvalFlags(q, price0).length && !f.override){ M.err='Please read the warning above and tick the box if you still want to approve.'; renderModal(); return; }
   if (q.custom){
     const price = r2(+f.price), sc = f.sc===''?NaN:r2(+f.sc), months = +f.months;
     if (!(price>0)){ M.err='Enter the item price you agreed with the customer.'; renderModal(); return; }
@@ -1804,6 +1854,7 @@ function submitApprove(form){
   }
   if (!f.start || !f.first){ M.err='Choose both dates.'; renderModal(); return; }
   if (f.first < f.start){ M.err='The first due date should be on or after the start date.'; renderModal(); return; }
+  if (!q.custom){ const pl = plan(q.price, q.months); Object.assign(q, { monthly:pl.monthly, last:pl.last }); }
   const a = createAccount(q, f.start, f.first, !!f.dpPaid, f.cardId);
   toast('Account created'); M = {kind:'account', id:a.id}; renderModal(); render();
 }
@@ -2039,7 +2090,7 @@ function customerHTML(){
 
 /* ---------- Create an account (from a quote, or added by the owner) ---------- */
 function createAccount(q, start, first, dpPaid, cardId){
-  const a = { id:uid('A-'), quoteId:q.id, customer:{name:q.name,contact:q.contact,email:q.email||'',messenger:q.messenger}, productId:q.productId, productName:q.productName, price:q.price, dp:q.dp, dpPaid:!!dpPaid, dpPaidDate:dpPaid?today():'', months:q.months, monthly:q.monthly, startDate:start, firstDue:first, dueDay:parse(first).getDate(), schedule:buildSchedule(q.price,q.months,first).map(it=>({...it,payments:[]})), cardId:cardId||'', cancelled:false, sample:false };
+  const a = { id:uid('A-'), quoteId:q.id, customer:{name:q.name,contact:q.contact,email:q.email||'',messenger:q.messenger}, productId:q.productId, productName:q.productName, price:q.price, dp:q.dp, dpPaid:!!dpPaid, dpPaidDate:dpPaid?today():'', months:q.months, monthly:plan(q.price,q.months).monthly, startDate:start, firstDue:first, dueDay:parse(first).getDate(), schedule:buildSchedule(q.price,q.months,first).map(it=>({...it,payments:[]})), cardId:cardId||'', cancelled:false, sample:false };
   S.accounts.unshift(a); q.status='Approved'; q.accountId=a.id; save(); return a;
 }
 function defaultTerm(p){ return p.durations.includes(12) ? 12 : p.durations[Math.floor((p.durations.length-1)/2)]; }
@@ -2070,7 +2121,7 @@ function newPurchaseHTML(){
       <div class="field"><label for="np-first">First due date</label><input class="input" type="date" id="np-first" name="first" value="${addMonths(today(),1)}"></div>
     </div>
     <div class="field"><label for="np-card">Credit card used to buy the item</label>${cardSelectHTML('np-card','')}</div>
-    <label for="np-dp" style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" name="dpPaid" id="np-dp" checked> Service charge received</label>
+    <label for="np-dp" style="display:flex;gap:8px;align-items:center;font-size:14px"><input type="checkbox" name="dpPaid" id="np-dp"> Service charge already received</label>
     ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" data-act="${c?'back-cust-np':'close'}">Cancel</button><button type="submit" class="btn primary">Create account</button></div>
   </form></div>`;
@@ -2099,21 +2150,27 @@ function ownerAccounts(){
   const list = [...S.accounts].filter(a=> cf==='all' || (cf==='none' ? !cardById(a.cardId) : a.cardId===cf)).sort((a,b)=>{ const o={Overdue:0,Active:1,'Fully Paid':2,Cancelled:3}; return o[acctStatus(a)]-o[acctStatus(b)]; });
   const opts = [['all','All cards',S.accounts.length], ...(S.cards||[]).map(c=>[c.id,`${c.name} ••${c.last4}`,S.accounts.filter(a=>a.cardId===c.id).length]), ['none','No card set',S.accounts.filter(a=>!cardById(a.cardId)).length]];
   const tot = r2(list.filter(a=>!a.cancelled).reduce((s,a)=>s+acctBalance(a),0));
+  const card = a => cardById(a.cardId) ? `${esc(cardById(a.cardId).name)} ••${esc(cardById(a.cardId).last4)}` : 'No card set';
+  const bar = a => `<div class="bar"><i style="width:${Math.min(100,acctPaid(a)/a.price*100).toFixed(1)}%"></i></div>`;
   return `<div class="o-head"><div><h2>Installment accounts</h2><p class="muted small">One account = one purchase. A customer with several purchases has several accounts, each with its own due dates.</p></div><button class="btn" data-act="new-purchase">Add purchase</button></div>
   <div class="toolbar"><div class="chips">${opts.map(([k,l,n])=>`<button class="chip" data-act="card-filter" data-id="${k}" aria-pressed="${cf===k}">${esc(l)}<span class="ct">${n}</span></button>`).join('')}</div></div>
   ${cf!=='all'&&list.length?`<p class="small muted" style="margin:-4px 0 12px">Still to collect on these accounts: <b class="num" style="color:var(--ink)">${peso(tot)}</b></p>`:''}
-  ${list.length?`<div class="tablewrap"><table>
-    <thead><tr><th>Customer</th><th>Product</th><th class="r">Monthly</th><th>Paid</th><th class="r">Balance</th><th>Next due</th><th>Card</th><th>Service charge</th><th>Status</th></tr></thead>
+  ${list.length?`<div class="tablewrap otable-wrap"><table class="otable">
+    <thead><tr><th>Customer</th><th>Item</th><th class="r">Monthly</th><th>Paid</th><th class="r">Balance</th><th>Next due</th><th>Status</th></tr></thead>
     <tbody>${list.map(a=>{ const paid=acctPaid(a), nd=nextDue(a), st=acctStatus(a); return `<tr class="clickable" data-act="open-acct" data-id="${a.id}" tabindex="0">
       <td><b>${esc(a.customer.name)}</b><span class="sub num">${esc(a.customer.contact)}${a.sample?' · Sample':''}</span></td>
-      <td style="min-width:170px">${esc(a.productName)}<span class="sub">${mos(a.months)} · price ${peso(a.price)}</span></td>
+      <td style="min-width:190px">${esc(a.productName)}<span class="sub">${mos(a.months)} · price ${peso(a.price)} · ${card(a)}</span></td>
       <td class="r num">${peso(a.monthly)}</td>
-      <td style="min-width:130px"><div class="bar"><i style="width:${Math.min(100,paid/a.price*100).toFixed(1)}%"></i></div><span class="sub num">${peso(paid)} · ${a.schedule.filter(i=>instStatus(i)==='Paid').length}/${a.months}</span></td>
+      <td style="min-width:120px">${bar(a)}<span class="sub num">${peso(paid)} · ${a.schedule.filter(i=>instStatus(i)==='Paid').length}/${a.months}</span></td>
       <td class="r num"><b>${peso(acctBalance(a))}</b></td>
       <td class="small">${nd&&!a.cancelled?dueLabel(nd):'—'}</td>
-      <td class="small num" style="white-space:nowrap">${cardById(a.cardId)?`${esc(cardById(a.cardId).name)}<span class="sub">•••• ${esc(cardById(a.cardId).last4)}</span>`:'<span class="muted">Not set</span>'}</td>
-      <td>${a.dpPaid?'<span class="pill ok">Received</span>':'<span class="pill warn">Not yet</span>'}</td>
-      <td>${pill(st)}</td></tr>`; }).join('')}</tbody></table></div>`:`<div class="empty">${cf==='all'?'No accounts yet. Approve a quote request to create one.':'No accounts for this card.'}</div>`}`;
+      <td>${pill(st)}${a.dpPaid?'':'<span class="sub" style="color:var(--warn)">Service charge not yet</span>'}</td></tr>`; }).join('')}</tbody></table></div>
+  <div class="ocards">${list.map(a=>{ const nd=nextDue(a); return `<div class="ocard" data-act="open-acct" data-id="${a.id}" tabindex="0">
+      <div class="oc-top"><div style="min-width:0"><b>${esc(a.customer.name)}</b><span class="meta">${esc(a.productName)}</span></div>${pill(acctStatus(a))}</div>
+      ${bar(a)}
+      <div class="oc-row num"><span>Balance <b>${peso(acctBalance(a))}</b></span><span>${peso(a.monthly)}/mo · ${a.schedule.filter(i=>instStatus(i)==='Paid').length}/${a.months} paid</span></div>
+      <span class="meta">${nd&&!a.cancelled?dueLabel(nd):'—'}${a.dpPaid?'':' · <span style="color:var(--warn)">Service charge not yet</span>'}</span>
+    </div>`; }).join('')}</div>`:`<div class="empty">${cf==='all'?'No accounts yet. Approve a quote request to create one.':'No accounts for this card.'}</div>`}`;
 }
 function accountHTML(){
   const a = S.accounts.find(x=>x.id===M.id); if(!a) return '';
@@ -2199,16 +2256,25 @@ function ownerPayments(){
   else list = list.filter(x=>x.st===ui.payFilter);
   list.sort((x,y)=> ui.payFilter==='Paid' ? (y.it.paidDate||'').localeCompare(x.it.paidDate||'') : x.it.due.localeCompare(y.it.due));
   const cnt = f => f==='Open' ? allInstallments().filter(x=>x.st!=='Paid').length : allInstallments().filter(x=>x.st===f).length;
+  const act = (a,it,st) => st!=='Paid'?`<button class="btn sm primary" data-act="pay" data-a="${a.id}" data-n="${it.n}" data-ext="1">Record</button>`:`<button class="btn sm ghost" data-act="open-acct" data-id="${a.id}">Account</button>`;
+  const notes = it => (it.payments||[]).length ? esc(it.payments.map(p=>[payMethodText(p),p.note].filter(Boolean).join(' · ')).filter(Boolean).join(' | ')) : '';
+  const rows = list.slice(0,80);
   return `<div class="o-head"><div><h2>Payments</h2><p class="muted small">Record payments as you receive them (GCash, bank transfer, cash).</p></div></div>
   <div class="toolbar"><div class="chips">${filters.map(f=>`<button class="chip" data-act="pfilter" data-f="${f}" aria-pressed="${ui.payFilter===f}">${f==='Due'?'Due soon':f}<span class="ct">${cnt(f)}</span></button>`).join('')}</div></div>
-  ${list.length?`<div class="tablewrap"><table>
-    <thead><tr><th>Due date</th><th>Customer</th><th>Product</th><th class="r">Amount</th><th class="r">Paid</th><th>Method / note</th><th>Status</th><th class="r"></th></tr></thead>
-    <tbody>${list.slice(0,80).map(({a,it,st})=>`<tr>
+  ${list.length?`<div class="tablewrap otable-wrap"><table class="otable">
+    <thead><tr><th>Due date</th><th>Customer</th><th>Item</th><th class="r">Amount</th><th class="r">Paid</th><th>Method / note</th><th>Status</th><th class="r stick"></th></tr></thead>
+    <tbody>${rows.map(({a,it,st})=>`<tr>
       <td class="num">${fdate(it.due)}<span class="sub">${st==='Paid'?'Paid '+fdate(it.paidDate):dueLabel(it)}</span></td>
       <td><button class="linkbtn" data-act="open-cust" data-id="${esc(ckey(a.customer.contact))}">${esc(a.customer.name)}</button></td>
       <td>${esc(a.productName)}<span class="sub">#${it.n} of ${a.months}</span></td>
-      <td class="r num">${peso(it.amount)}</td><td class="r num">${it.paid?peso(it.paid):'—'}</td><td class="small" style="min-width:120px">${(it.payments||[]).length?esc(it.payments.map(p=>[payMethodText(p),p.note].filter(Boolean).join(' · ')).filter(Boolean).join(' | '))||'—':'—'}</td><td>${pill(st)}</td>
-      <td class="actions">${st!=='Paid'?`<button class="btn sm primary" data-act="pay" data-a="${a.id}" data-n="${it.n}" data-ext="1">Record</button>`:`<button class="btn sm ghost" data-act="open-acct" data-id="${a.id}">Account</button>`}</td></tr>`).join('')}</tbody></table></div>`:`<div class="empty">No payments in this view.</div>`}`;
+      <td class="r num">${peso(it.amount)}</td><td class="r num">${it.paid?peso(it.paid):'—'}</td><td class="small" style="min-width:120px">${notes(it)||'—'}</td><td>${pill(st)}</td>
+      <td class="actions stick">${act(a,it,st)}</td></tr>`).join('')}</tbody></table></div>
+  <div class="ocards">${rows.map(({a,it,st})=>`<div class="ocard">
+      <div class="oc-top"><div style="min-width:0"><b>${esc(a.customer.name)}</b><span class="meta">${esc(a.productName)} · #${it.n} of ${a.months}</span></div>${pill(st)}</div>
+      <div class="oc-row num"><span><b>${peso(remaining(it)||it.amount)}</b>${it.paid&&st!=='Paid'?` <span class="meta">(${peso(it.paid)} paid)</span>`:''}</span><span class="meta">${st==='Paid'?'Paid '+fdate(it.paidDate):dueLabel(it)}</span></div>
+      ${notes(it)?`<span class="meta">${notes(it)}</span>`:''}
+      <div class="oc-acts">${act(a,it,st)}</div>
+    </div>`).join('')}</div>`:`<div class="empty">No payments in this view.</div>`}`;
 }
 
 /* ---------- Edit account: details, due dates, reminder preferences ---------- */
@@ -2366,6 +2432,7 @@ function ownerSettings(){
         <div class="field"><label for="st-days">"Due soon" window (days)</label><input class="input num" id="st-days" name="dueSoonDays" type="number" min="1" max="31" value="${s.dueSoonDays}"></div>
         <div class="field"><label for="st-pen-en">Late payment penalty</label><textarea class="input" id="st-pen-en" name="penaltyEn">${esc(s.penaltyEn||'')}</textarea><span class="hint">Shown to customers on every offer, and they must tick "I understand" before sending a request. Add your exact amount, e.g. "₱100 for every week late."</span></div>
         <div class="field"><label for="st-tpl">Reminder message</label><textarea class="input" id="st-tpl" name="reminderTemplate">${esc(s.reminderTemplate)}</textarea><span class="hint">Use {name}, {amount} and {date}.</span></div>
+        <div class="field"><label for="st-limit">First-purchase limit (₱)</label><input class="input num" id="st-limit" name="newCustLimit" type="number" min="0" step="1" value="${esc(s.newCustLimit||'')}" placeholder="e.g. 15000"><span class="hint">A customer without a fully paid purchase yet, asking for an item above this price, gets a warning before you approve. Blank = no limit.</span></div>
         ${API_URL?`<div class="field"><span class="lab">Automatic email reminders</span>
           <label for="st-auto" class="agree-line"><input type="checkbox" id="st-auto" name="autoEmail" ${s.autoEmail?'checked':''}> Email customers who gave an email address: before the due date, on the due date, and weekly while overdue</label>
           ${autoEmailStatus()}</div>`:''}
@@ -2849,7 +2916,7 @@ document.addEventListener('submit', e=>{
   else if (k==='settings'){
     const f = Object.fromEntries(new FormData(form));
     Object.assign(S.settings, { shopName:f.shopName.trim()||'AbotVida', tagline:(f.tagline||'').trim(), messengerUrl:f.messengerUrl.trim(), ownerEmail:f.ownerEmail.trim(), dueSoonDays:Math.max(1,Math.min(31,+f.dueSoonDays||7)), reminderTemplate:f.reminderTemplate.trim()||S.settings.reminderTemplate, penaltyEn:(f.penaltyEn||'').trim(),
-      ...(API_URL ? { autoEmail: !!f.autoEmail } : {}),
+      ...(API_URL ? { autoEmail: !!f.autoEmail } : {}), newCustLimit: f.newCustLimit==='' ? '' : Math.max(0, Math.round(+f.newCustLimit||0)),
       shopInfo:{ fbPage:(f.si_fbPage||'').trim(), location:(f.si_location||'').trim(), hours:(f.si_hours||'').trim(), deliveryAreas:(f.si_deliveryAreas||'').trim(), dtiNo:(f.si_dtiNo||'').trim(), privacyEmail:(f.si_privacyEmail||'').trim() } });
     save(); render(); toast('Settings saved');
   }

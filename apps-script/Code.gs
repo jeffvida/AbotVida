@@ -141,7 +141,14 @@ function readAll() {
 
 /* ============================== Business rules (same as the website) ============================== */
 function dpOf(p) { return p.dpType === 'percent' ? Math.round(p.price * p.dpValue / 100) : +p.dpValue; }
-function plan(price, months) { const c = Math.round(price * 100), m = Math.round(c / months), last = c - m * (months - 1); return { monthly: m / 100, last: last / 100 }; }
+// Monthly = item price ÷ months, rounded UP to the next whole peso; the last month is a little smaller so the total equals the item price.
+function plan(price, months) {
+  const c = Math.round(price * 100);
+  if (months <= 1) return { monthly: c / 100, last: c / 100 };
+  let m = Math.ceil(c / months / 100) * 100, last = c - m * (months - 1);
+  if (last <= 0) { m = Math.round(c / months); last = c - m * (months - 1); }
+  return { monthly: m / 100, last: last / 100 };
+}
 function fullName(p) { return p.brand ? p.brand + ' ' + p.name : p.name; }
 function digits(s) { let d = String(s || '').replace(/\D/g, ''); if (d.indexOf('63') === 0 && d.length === 12) d = '0' + d.slice(2); return d; }
 
