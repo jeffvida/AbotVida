@@ -6,4 +6,4 @@ Installment (hulugan) shop website: gadgets, appliances and furniture.
 - `apps-script/` — the Google Sheets backend (`Code.gs`) and setup steps (`SETUP.md`). This code runs in Google Apps Script, not on Cloudflare.
 - `wrangler.jsonc` — tells Cloudflare to serve the `site/` folder.
 
-Every push to `main` updates the live site.
+Every push to `main` updates the live site through GitHub Actions (`.github/workflows/deploy.yml`).

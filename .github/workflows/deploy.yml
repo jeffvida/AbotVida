@@ -1,0 +1,23 @@
+# Publishes the site/ folder to Cloudflare every time main changes.
+# Needs the repository secret CLOUDFLARE_API_TOKEN (Cloudflare token from the "Edit Cloudflare Workers" template).
+name: Deploy to Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: 14f2c4e88d58b483414ab156bbbacfcd
+          command: deploy

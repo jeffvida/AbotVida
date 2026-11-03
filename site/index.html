@@ -816,7 +816,7 @@ const LANG = {
     iPay:'Pay monthly through GCash, mobile banking or cash', iReq:'Valid ID and ATM card needed once approved. Not needed to request a quote.',
     penaltyTitle:'Late payment penalty', agree:'I understand that late payments have a penalty.', errAgree:'Please confirm that you understand the late payment penalty.',
     sending:'Sending…', errNet:'We couldn\'t send this. Check your connection and try again, or message us on Messenger.', errBusy:'We\'re getting a lot of requests right now. Please try again later or message us.',
-    errGone:'This item or term is no longer available. Please refresh the page.', loading:'Loading products…', loadFail:'We couldn\'t load the products. Check your connection and refresh the page.',
+    errGone:'This item or term is no longer available. Please refresh the page.', loading:'Loading products…', noProducts:'New items are coming soon. Tap "Request any item" below or message us for what you need.', loadFail:'We couldn\'t load the products. Check your connection and refresh the page.',
     footerLive:'AbotVida is an independent store and is not affiliated with the brands or retailers shown.',
   }
 
@@ -844,7 +844,7 @@ function infoBoxHTML(p){
 }
 const protoOn = () => !API_URL || S.products.some(p=>p.sample);
 const protoBar = () => protoOn() ? `<div class="protobar"><div class="wrap"><b>Prototype</b><span>${t('proto')}</span></div></div>` : '';
-const emptyMsg = () => (API_URL && !S.products.length) ? (SY.catFail ? t('loadFail') : !SY.catOk ? t('loading') : t('empty')) : t('empty');
+const emptyMsg = () => (API_URL && !S.products.length) ? (SY.catFail ? t('loadFail') : !SY.catOk ? t('loading') : t('noProducts')) : t('empty');
 const statusPill = s => `<span class="pill ${PILL[s]||''}">${esc(t('status')[s]||s)}</span>`;
 function wordmark(){ const n = S.settings.shopName||'AbotVida'; return n==='AbotVida' ? '<span class="wm">Abot<span class="v">Vida</span></span>' : `<span class="wm">${esc(n)}</span>`; }
 function logoMark(){ return S.settings.logo ? `<span class="mark"><img src="${S.settings.logo}" alt=""></span>` : '<span class="mark av"><svg aria-hidden="true" focusable="false"><use href="#av-mark"/></svg></span>'; }
