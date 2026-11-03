@@ -593,7 +593,7 @@ a{color:var(--brand)}
 @media (max-width:560px){ .ownerbtn .hide-sm{display:none} }
 @media (max-width:560px){ header.top:not(.shopbar):not(.pbar) .lname{display:none} }
 
-/* v4: product cards show the amount to start; compact how-it-works */
+/* v4: product cards show the service charge; compact how-it-works */
 .pstart{font-size:12px;font-weight:700;color:var(--brand-ink)}
 .how3{padding-block:12px 0}
 .how3 ol{list-style:none;margin:0;padding:12px 14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;background:var(--bg);border:1px solid var(--line);border-radius:18px}
@@ -943,7 +943,7 @@ const LANG = {
     sending:'Sending…', errNet:'We couldn\'t send this. Check your connection and try again, or message us on Messenger.', errBusy:'We\'re getting a lot of requests right now. Please try again later or message us.',
     errGone:'This item or term is no longer available. Please refresh the page.', loading:'Loading products…', noProducts:'New items are coming soon. Tap "Request any item" below or message us for what you need.', loadFail:'We couldn\'t load the products. Check your connection and refresh the page.',
     footerLive:'AbotVida is an independent store and is not affiliated with the brands or retailers shown.',
-    toStart:x=>`${x} to start`, howShort:'How it works', st1:'Pick an item and term', st2:'Send a request', st3:'Pay the service charge, then monthly',
+    toStart:x=>`${x} service charge`, howShort:'How it works', st1:'Pick an item and term', st2:'Send a request', st3:'Pay the service charge, then monthly',
     trustLbl:'Why shop with us', trust1:'Brand new with store warranty', trust2:'Pay by GCash, bank or cash', trust3:'Free delivery on small items', trust4:'Flexible monthly terms',
     faqH:'Questions', privacy:'Privacy notice', readPrivacy:'Read the privacy notice',
     consent:'I agree that AbotVida may collect and use my details to process this request and contact me, as described in the privacy notice.',
@@ -1770,7 +1770,7 @@ function ownerQuotes(){
   const statuses = ['Pending Review','Approved','Declined','Completed','All'];
   const list = S.quotes.filter(q=>ui.quoteFilter==='All'||q.status===ui.quoteFilter).sort((a,b)=>b.createdAt-a.createdAt);
   const prodLine = q => `${q.custom&&!q.price ? `${q.months?'Prefers '+mos(q.months):'Term not decided'}${q.link?` · <a href="${esc(linkify(q.link))}" target="_blank" rel="noopener">Item link</a>`:''}` : `${mos(q.months)} · price ${peso(q.price)}`}`;
-  const money = q => q.custom&&!q.price ? 'Price to be quoted' : `${peso(q.dp)} to start · ${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'} · total ${peso(q.total)}`;
+  const money = q => q.custom&&!q.price ? 'Price to be quoted' : `${peso(q.dp)} service charge · ${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'} · total ${peso(q.total)}`;
   return `
   <div class="o-head"><div><h2>Quote requests</h2><p class="muted small">Review each request, confirm with the customer on Messenger, then approve to create an installment account.</p></div></div>
   <div class="toolbar"><div class="chips">${statuses.map(s=>`<button class="chip" data-act="qfilter" data-f="${s}" aria-pressed="${ui.quoteFilter===s}">${s}<span class="ct">${s==='All'?S.quotes.length:S.quotes.filter(q=>q.status===s).length}</span></button>`).join('')}</div></div>
@@ -1780,7 +1780,7 @@ function ownerQuotes(){
       <td><b class="num">${esc(q.id)}</b><span class="sub">${fdt(q.createdAt)}${q.sample?' · Sample':''}</span></td>
       <td><b>${esc(q.name)}</b><span class="sub num">${esc(q.contact)}</span>${q.messenger?`<a class="small" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">Messenger</a>`:''}</td>
       <td style="min-width:200px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}<span class="sub">${prodLine(q)}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}</td>
-      <td class="r num small">${q.custom&&!q.price?'<span class="muted">Price to be quoted</span>':`<b>${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'}</b><span class="sub">${peso(q.dp)} to start · total ${peso(q.total)}</span>`}</td>
+      <td class="r num small">${q.custom&&!q.price?'<span class="muted">Price to be quoted</span>':`<b>${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'}</b><span class="sub">${peso(q.dp)} service charge · total ${peso(q.total)}</span>`}</td>
       <td>${pill(q.status)}</td>
       <td class="actions stick">${quoteActions(q)}</td>
     </tr>`).join('')}</tbody></table></div>
