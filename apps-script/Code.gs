@@ -18,6 +18,8 @@ const DURATIONS = [1, 2, 3, 6, 9, 12, 18, 24];
 const TOKEN_DAYS = 30;              // how long the owner stays signed in on a device
 const MAX_FAILS = 8;                // wrong passwords before a 15-minute lockout
 const IMAGE_FOLDER = 'AbotVida images';
+const TZ = 'Asia/Manila';           // dates for reminders
+const LOG_TAB = 'Reminder log';
 const imageUrl = id => 'https://lh3.googleusercontent.com/d/' + id;
 
 /* Sheet layout: readable columns first, record JSON last. */
@@ -132,6 +134,8 @@ function nextQuoteNo() {
 function readAll() {
   const st = { settings: readSettings(), nextQuote: +props().getProperty('nextQuote') || 1001 };
   COLLECTIONS.forEach(c => st[c] = readColl(c));
+  st.emailLog = readEmailLog().slice(-400);
+  st.reminderStatus = reminderStatus();
   return st;
 }
 
@@ -161,11 +165,13 @@ function throttle(key) {
   const c = CacheService.getScriptCache();
   [['t_' + key, 6], ['t_all', 300]].forEach(([k, max]) => { const n = +c.get(k) || 0; if (n >= max) fail('errBusy'); c.put(k, String(n + 1), 3600); });
 }
+function validEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e); }
 function checkPerson(b) {
-  const name = clip(b.name, 80), contact = clip(b.contact, 30);
+  const name = clip(b.name, 80), contact = clip(b.contact, 30), email = clip(b.email, 120);
   if (!name || !contact) fail('errReq');
   if (digits(contact).length < 10) fail('errNum');
-  return { name: name, contact: contact, messenger: clip(b.messenger, 200), message: clip(b.message, 600) };
+  if (email && !validEmail(email)) fail('errEmail');
+  return { name: name, contact: contact, email: email, messenger: clip(b.messenger, 200), message: clip(b.message, 600) };
 }
 function submitQuote(b) {
   const who = checkPerson(b), s = readSettings();
@@ -213,7 +219,7 @@ function submitReview(b) {
 function notifyOwner(q) {
   try {
     const to = readSettings().ownerEmail; if (!to) return;
-    MailApp.sendEmail(to, 'New AbotVida request ' + q.id, [q.name + ' · ' + q.contact, q.productName + (q.months ? ' · ' + q.months + ' months' : ''), q.message ? 'Note: ' + q.message : '', '', 'Open your owner dashboard to review it.'].join('\n'));
+    MailApp.sendEmail(to, 'New AbotVida request ' + q.id, [q.name + ' · ' + q.contact + (q.email ? ' · ' + q.email : ''), q.productName + (q.months ? ' · ' + q.months + ' months' : ''), q.message ? 'Note: ' + q.message : '', '', 'Open your owner dashboard to review it.'].join('\n'));
   } catch (e) {}
 }
 
@@ -270,8 +276,14 @@ function ownerSave(b) {
       mine.forEach(r => storeImages(c, r, images));
       writeColl(c, mine.concat(theirs));
     });
-    if (st.settings) { storeImages('settings', st.settings, images); writeSettings(Object.assign({}, readSettings(), st.settings)); }
-    return { ok: true, added: added, images: images, savedAt: Date.now() };
+    let status = null;
+    if (st.settings) {
+      storeImages('settings', st.settings, images);
+      const merged = Object.assign({}, readSettings(), st.settings);
+      writeSettings(merged);
+      if ('autoEmail' in st.settings) { try { setReminderTrigger(!!merged.autoEmail); } catch (e) {} status = reminderStatus(); }
+    }
+    return { ok: true, added: added, images: images, savedAt: Date.now(), reminderStatus: status };
   });
 }
 // Uploaded photos arrive as data: URLs. Keep them in Drive and save only the link in the sheet.
@@ -311,6 +323,9 @@ function onOpen() {
     .addItem('Set up sheets', 'setupSheets')
     .addItem('Set owner password', 'promptPassword')
     .addItem('Sign out all devices', 'signOutAll')
+    .addSeparator()
+    .addItem('Set up email reminders', 'menuSetupReminders')
+    .addItem('Send email reminders now', 'menuSendReminders')
     .addToUi();
 }
 function setupSheets() {
@@ -327,3 +342,85 @@ function promptPassword() {
   setPassword(pw); ui.alert('Password saved. Any device that was signed in has been signed out.');
 }
 function signOutAll() { const p = props(); Object.keys(p.getProperties()).forEach(k => { if (k.indexOf('tok_') === 0) p.deleteProperty(k); }); SpreadsheetApp.getUi().alert('All devices are signed out.'); }
+
+/* ============================== Automatic email reminders ============================== */
+// Runs every morning (turn it on in the owner dashboard: Settings → Automatic email reminders).
+// For each account with a customer email and reminders on, it sends at most one email a day:
+//   "soon"    once when the next unpaid payment is within the reminder window (days before)
+//   "today"   on the due date
+//   "overdue" the day after, then once a week until it is paid
+// Every email is written to the "Reminder log" tab, so nobody gets the same reminder twice.
+function todayStr() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd'); }
+function dayDiff(a, b) { const x = a.split('-').map(Number), y = b.split('-').map(Number); return Math.round((Date.UTC(y[0], y[1] - 1, y[2]) - Date.UTC(x[0], x[1] - 1, x[2])) / 864e5); }
+function prettyDate(s) { const d = s.split('-').map(Number); return Utilities.formatDate(new Date(Date.UTC(d[0], d[1] - 1, d[2], 12)), TZ, 'MMM d, yyyy'); }
+function pesoText(n) { const p = round2(n).toFixed(2).split('.'); return '₱' + p[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',') + (p[1] !== '00' ? '.' + p[1] : ''); }
+const LOG_COLS = ['Sent', 'Customer', 'Email', 'Item', 'Payment', 'Due date', 'Type', 'Amount', 'data (do not edit)'];
+function readEmailLog() {
+  const sh = sheetFor(LOG_TAB, LOG_COLS), n = sh.getLastRow(); if (n < 2) return [];
+  return sh.getRange(2, LOG_COLS.length, n - 1, 1).getValues().map(r => { try { return JSON.parse(r[0]); } catch (e) { return null; } }).filter(Boolean);
+}
+function reminderStatus() {
+  let trigger = null, quota = null;
+  try { trigger = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'sendReminders'); } catch (e) {}
+  try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+  return { trigger: trigger, quota: quota, lastRun: +props().getProperty('lastReminderRun') || 0 };
+}
+function setReminderTrigger(on) {
+  const mine = ScriptApp.getProjectTriggers().filter(t => t.getHandlerFunction() === 'sendReminders');
+  if (on && !mine.length) ScriptApp.newTrigger('sendReminders').timeBased().everyDays(1).atHour(9).inTimezone(TZ).create();
+  if (!on) mine.forEach(t => ScriptApp.deleteTrigger(t));
+}
+function fillTemplate(tpl, name, amount, date) { return String(tpl).split('{name}').join(name).split('{amount}').join(amount).split('{date}').join(date); }
+function sendReminders() {
+  const s = readSettings(), T = todayStr();
+  props().setProperty('lastReminderRun', String(Date.now()));
+  if (!s.autoEmail) return { sent: 0, off: true };
+  const last = {};
+  readEmailLog().forEach(l => { const k = [l.accountId, l.n, l.type, l.due].join('|'); last[k] = Math.max(last[k] || 0, +l.at || 0); });
+  const logSheet = sheetFor(LOG_TAB, LOG_COLS);
+  let sent = 0, quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+  const m = String(s.messengerUrl || '').trim(), msgr = /^https?:\/\/m\.me\/?$/i.test(m) ? '' : m;
+  readColl('accounts').forEach(a => {
+    if (sent >= quota || a.cancelled || a.sample) return;
+    const cu = a.customer || {}, email = clip(cu.email, 120);
+    if (!validEmail(email)) return;
+    const r = Object.assign({ on: true, daysBefore: null, snoozeUntil: '', message: '' }, a.reminder || {});
+    if (r.on === false || (r.snoozeUntil && r.snoozeUntil > T)) return;
+    const win = (r.daysBefore == null || r.daysBefore === '') ? (+s.dueSoonDays || 7) : +r.daysBefore;
+    const open = (a.schedule || []).filter(i => (+i.paid || 0) < (+i.amount || 0) - 0.001);
+    for (let k = 0; k < open.length; k++) {
+      const it = open[k], d = dayDiff(T, it.due), key = t => [a.id, it.n, t, it.due].join('|');
+      let type = '';
+      if (d < 0) { const prev = last[key('overdue')]; if (!prev || Date.now() - prev >= 7 * 864e5 - 3600e3) type = 'overdue'; }
+      else if (d === 0) { if (!last[key('today')]) type = 'today'; }
+      else if (d <= win) { if (!last[key('soon')]) type = 'soon'; }
+      if (!type) { if (d >= 0) break; continue; }
+      const first = String(cu.name || '').split(' ')[0] || 'there', due = (+it.amount || 0) - (+it.paid || 0), amount = pesoText(due), date = prettyDate(it.due);
+      const subject = type === 'overdue' ? 'Overdue payment: ' + amount + ' was due on ' + date
+        : type === 'today' ? 'Your payment of ' + amount + ' is due today' : 'Payment reminder: ' + amount + ' due on ' + date;
+      const intro = type === 'overdue'
+        ? 'Hi ' + first + ', your installment payment of ' + amount + ' was due on ' + date + ' and we have not received it yet. ' + (s.penaltyEn ? s.penaltyEn + ' ' : '') + 'Please pay as soon as you can, or message us if you need help.'
+        : fillTemplate(r.message || s.reminderTemplate || DEFAULT_SETTINGS.reminderTemplate, first, amount, date);
+      const lines = [intro, '', 'Item: ' + a.productName, 'Payment ' + it.n + ' of ' + a.months + ': ' + amount + ', due ' + date, 'Pay through GCash, mobile banking or cash.', ''];
+      if (msgr) lines.push('Questions? Message us: ' + msgr);
+      lines.push(s.shopName || 'AbotVida', '', 'This is an automatic reminder. If you have already paid, thank you, and please ignore this email.');
+      try {
+        const opt = { to: email, subject: subject, body: lines.join('\n'), name: s.shopName || 'AbotVida' };
+        if (validEmail(s.ownerEmail || '')) opt.replyTo = s.ownerEmail;
+        MailApp.sendEmail(opt); sent++;
+        logSheet.appendRow([new Date(), cu.name, email, a.productName, it.n + ' of ' + a.months, it.due, type, due,
+          JSON.stringify({ at: Date.now(), accountId: a.id, n: it.n, due: it.due, type: type, email: email })]);
+      } catch (e) {}
+      break;   // at most one email per account per day
+    }
+  });
+  return { sent: sent };
+}
+function menuSetupReminders() {
+  setReminderTrigger(true);
+  SpreadsheetApp.getUi().alert('Email reminders are set up and checked every morning at about 9 AM. Turn them on or off in the owner dashboard: Settings → Automatic email reminders.');
+}
+function menuSendReminders() {
+  const r = sendReminders();
+  SpreadsheetApp.getUi().alert(r.off ? 'Automatic email reminders are off. Turn them on in the owner dashboard: Settings.' : 'Reminder emails sent: ' + r.sent + '.');
+}

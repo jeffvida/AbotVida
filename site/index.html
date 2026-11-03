@@ -566,6 +566,33 @@ a{color:var(--brand)}
 .consent input{width:18px;height:18px;margin-top:2px;flex:none}
 .pv-inline summary{cursor:pointer;font-size:13px;color:var(--brand);font-weight:600;margin-left:26px}
 .pv-inline .privacy-text{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 12px 10px;margin-top:6px}
+
+/* Owner pages use the full screen width */
+.wrap.wide{max-width:1560px}
+.owner{grid-template-columns:190px minmax(0,1fr);gap:24px}
+@media (max-width:860px){.owner{grid-template-columns:1fr}}
+/* Products: compact table, Edit always visible, cards on phones */
+.ptable td,.ptable th{padding:10px 12px}
+.ptable .prodcell{min-width:200px}
+.ptable td.terms{white-space:nowrap}
+.ptable th.stick,.ptable td.stick{position:sticky;right:0;background:var(--raised);box-shadow:-8px 0 12px -10px rgba(16,53,104,.35)}
+.ptable thead th.stick{background:var(--surface)}
+.ptable tr.clickable:hover td.stick{background:var(--surface)}
+.iconbtn.sm{min-width:34px;height:34px;padding:0 8px}
+.iconbtn.sm svg{width:17px;height:17px}
+.pcards{display:none;gap:10px}
+.pcard-o{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px 12px;align-items:center;background:var(--raised);border:1px solid var(--line);border-radius:14px;padding:12px;cursor:pointer}
+.pcard-o .mini{width:56px;height:56px;border-radius:10px;aspect-ratio:auto}
+.pcard-o .mini .ph{width:70%}
+.pcard-o b{display:block;line-height:1.3}
+.pcard-o .meta{font-size:13px;color:var(--muted)}
+.pcard-o .row3{grid-column:1/-1;display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:10px}
+@media (max-width:780px){ .ptable-wrap{display:none} .pcards{display:grid} }
+/* Owner button (shown only on the owner's devices) */
+.ownerbtn{color:var(--brand)}
+@media (max-width:560px){ .ownerbtn .hide-sm{display:none} }
+@media (max-width:560px){ header.top:not(.shopbar):not(.pbar) .lname{display:none} }
+.okline{font-size:13px;color:var(--ok)} .warnline{font-size:13px;color:var(--warn)}
 </style>
 
 </head>
@@ -626,6 +653,7 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt
 const ord = n => { const v=n%100; return (v>=11&&v<=13)?'th':(['th','st','nd','rd'][n%10]||'th'); };
 const mos = n => n===1 ? '1 month' : n+' months';
 const uid = p => p + Math.random().toString(36).slice(2,8);
+const validEmail = e => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
 
 /* ---------- business rules ---------- */
 // Service charge (the upfront "DP") is separate revenue. It never touches the cash price or the monthly amount.
@@ -757,7 +785,7 @@ function assignSampleCards(list){ list.forEach((a,i)=>{ if(a.sample && !a.cardId
 /* ---------- storage ---------- */
 function load(){ try{ const raw = localStorage.getItem(KEY); if(raw){ const d = JSON.parse(raw); if(d && d.v===1) return d; } }catch(e){} return seed(); }
 function save(){ if (API_URL){ syncQueue(); return true; } try{ localStorage.setItem(KEY, JSON.stringify(S)); return true; }catch(e){ if (e && /quota/i.test(e.name+e.message)) setTimeout(()=>toast('Browser storage is full. Remove some photos.'),0); return false; } }
-function blankState(){ const s=seed(); return { v:1, m2:true, m3:true, m4:true, m5:true, m6:true, m7:true, m8:true, nextQuote:1001, products:[], quotes:[], accounts:[], cards:[], banners:[], reviews:[], gallery:[], notes:[], settings:{...s.settings} }; }
+function blankState(){ const s=seed(); return { v:1, m2:true, m3:true, m4:true, m5:true, m6:true, m7:true, m8:true, nextQuote:1001, products:[], quotes:[], accounts:[], cards:[], banners:[], reviews:[], gallery:[], notes:[], emailLog:[], reminderStatus:null, settings:{...s.settings} }; }
 let S = API_URL ? blankState() : load();
 // Add the Groceries samples to catalogs saved before the category existed
 if (S.settings.penaltyEn===undefined){ Object.assign(S.settings, PENALTY_DEFAULTS); save(); }
@@ -856,6 +884,7 @@ const LANG = {
     msgrPh:'m.me/yourname or facebook.com/yourname', msg:'Message', msgPh:'Color preference, delivery area, questions…',
     disclaimer:'This is only a request. It does not reserve the item yet. No ID needed for now: we\'ll ask for a valid ID and ATM card once your request is approved.',
     back:'Back', submit:'Submit quote request',
+    email:'Email', emailHint:'For payment reminders', emailPh:'you@example.com', errEmail:'Please check your email address, or leave it blank.', ownerBtn:'Owner',
     errReq:'Please enter your name and contact number.', errNum:'Please enter a valid mobile number, for example 0917 123 4567.',
     sent:n=>`Request sent. Salamat, ${n}!`, pending:'Your request is <b>Pending Review</b>. We\'ll confirm availability and your final terms before anything is purchased.',
     cont:'Continue on Messenger', copyDetails:'Copy details for Messenger', tip:'Tip: paste these details into Messenger so we can find your request faster.',
@@ -917,6 +946,12 @@ const protoOn = () => !API_URL || S.products.some(p=>p.sample);
 const protoBar = () => protoOn() ? `<div class="protobar"><div class="wrap"><b>Prototype</b><span>${t('proto')}</span></div></div>` : '';
 const emptyMsg = () => (API_URL && !S.products.length) ? (SY.catFail ? t('loadFail') : !SY.catOk ? t('loading') : t('noProducts')) : t('empty');
 const shopInfo = () => S.settings.shopInfo || {};
+// The Owner button shows only on devices where the owner has signed in (or opened the dashboard, in prototype mode).
+const OWNER_DEV = 'abotvida-owner-device';
+function isOwnerDevice(){ if (API_URL) return !!SY.token; try{ return localStorage.getItem(OWNER_DEV)==='1'; }catch(e){ return false; } }
+const LOCK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+let ownerTaps = [];
+function ownerTap(){ const n=Date.now(); ownerTaps = ownerTaps.filter(x=>n-x<2500).concat(n); if (ownerTaps.length>=5){ ownerTaps=[]; location.hash='owner'; } }
 function trustHTML(){
   const ic = d => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
   const items = [
@@ -952,8 +987,8 @@ function privacyBody(){
   const si = shopInfo(), name = esc(S.settings.shopName || 'AbotVida');
   const contact = si.privacyEmail ? `email <a href="mailto:${esc(si.privacyEmail)}">${esc(si.privacyEmail)}</a>` : 'message us on our Facebook Page';
   return `<p>${name} respects your privacy and follows the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
-    <h3>What we collect</h3><ul><li>Your name, mobile number and Messenger profile, and any message you send with a request.</li><li>The item and payment terms you choose.</li><li>If your request is approved: a valid ID and the other details we need to set up your installment account, and your payment records.</li></ul>
-    <h3>Why we use it</h3><ul><li>To review your request and contact you about it.</li><li>To buy and deliver your item, and to manage your installment account, payment reminders and records.</li><li>To keep the records the law requires.</li></ul>
+    <h3>What we collect</h3><ul><li>Your name, mobile number, email address (if you give it) and Messenger profile, and any message you send with a request.</li><li>The item and payment terms you choose.</li><li>If your request is approved: a valid ID and the other details we need to set up your installment account, and your payment records.</li></ul>
+    <h3>Why we use it</h3><ul><li>To review your request and contact you about it.</li><li>To buy and deliver your item, and to manage your installment account, payment reminders (including reminder emails if you gave your email) and records.</li><li>To keep the records the law requires.</li></ul>
     <h3>Who can see it</h3><p>Only ${name}, and a delivery partner when we deliver your item. We keep our records using Google's services. We never sell your information, and we share it with others only if the law requires it.</p>
     <h3>How long we keep it</h3><p>While your request or account is active, and afterwards only as long as we need it for our records or the law requires.</p>
     <h3>Your rights</h3><p>You can ask to see, correct or delete your information, or withdraw your consent. To do this, ${contact}. You can also file a complaint with the National Privacy Commission (privacy.gov.ph).</p>
@@ -1069,6 +1104,7 @@ function shopHeader(){
     <button class="logo" data-act="home" aria-label="${esc(S.settings.shopName)}">${logoMark()}<span class="wmwrap lname">${wordmark()}<span class="tagline">${esc(S.settings.tagline||'')}</span></span></button>
     <label class="topsearch">${I.search}<input id="shop-search" type="search" placeholder="${t('search')}" value="${esc(ui.q)}" aria-label="${t('search')}" enterkeyhint="search"></label>
     ${langToggle()}
+    ${isOwnerDevice()?`<a class="iconbtn ownerbtn" href="#owner" aria-label="${t('ownerBtn')}" title="${t('ownerBtn')}">${LOCK}<span class="hide-sm">${t('ownerBtn')}</span></a>`:''}
     ${m?`<a class="iconbtn msgr" href="${esc(m)}" target="_blank" rel="noopener" aria-label="${t('message')}">${I.msgr}<span class="hide-sm">${t('message')}</span></a>`:''}
   </div></header>`;
 }
@@ -1104,7 +1140,7 @@ function renderShop(){
       <div class="formulas"><p>${t('fNote')}</p><div class="formula">${t('f1')}</div><div class="formula">${t('f2')}</div></div>
     </div></section>
     ${faqHTML()}
-    <footer><div class="wrap"><div class="fbrand"><span class="flock">${logoMark()}${wordmark()}</span><span class="tagline">${esc(S.settings.tagline||'')}</span><span class="small muted">${t('descriptor')}</span>${footerInfoHTML()}</div><span>© ${new Date().getFullYear()} ${esc(S.settings.shopName)} · Philippines</span><span class="flinks"><button class="linkbtn small" data-act="review-open">${t('reviewCta')} ${t('writeReview')}</button><button class="linkbtn small" data-act="privacy-open">${t('privacy')}</button></span><span>${protoOn()?t('footer'):t('footerLive')}</span></div></footer>
+    <footer><div class="wrap"><div class="fbrand"><span class="flock">${logoMark()}${wordmark()}</span><span class="tagline">${esc(S.settings.tagline||'')}</span><span class="small muted">${t('descriptor')}</span>${footerInfoHTML()}</div><span data-act="owner-tap" style="user-select:none">© ${new Date().getFullYear()} ${esc(S.settings.shopName)} · Philippines</span><span class="flinks"><button class="linkbtn small" data-act="review-open">${t('reviewCta')} ${t('writeReview')}</button><button class="linkbtn small" data-act="privacy-open">${t('privacy')}</button></span><span>${protoOn()?t('footer'):t('footerLive')}</span></div></footer>
   </main>
   ${bottomNav()}`;
 }
@@ -1188,6 +1224,7 @@ function offerHTML(){
         <div class="field"><label for="qf-name">${t('fullName')}</label><input class="input" id="qf-name" name="name" autocomplete="name" required></div>
         <div class="field"><label for="qf-contact">${t('contact')}</label><input class="input" id="qf-contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required></div>
       </div>
+      <div class="field"><label for="qf-email">${t('email')} <span class="hint">${t('optional')} · ${t('emailHint')}</span></label><input class="input" id="qf-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
       <div class="field"><label for="qf-msgr">${t('msgr')} <span class="hint">${t('optional')}</span></label><input class="input" id="qf-msgr" name="messenger" placeholder="${t('msgrPh')}"></div>
       <div class="field"><label for="qf-msg">${t('msg')} <span class="hint">${t('optional')}</span></label><textarea class="input" id="qf-msg" name="message" placeholder="${t('msgPh')}"></textarea></div>
       ${penaltyText()?`<div class="penalty" role="note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/></svg><div><b>${t('penaltyTitle')}</b><span>${esc(penaltyText())}</span>
@@ -1292,6 +1329,7 @@ function customHTML(){
       <div class="field"><label for="cr-name">${t('fullName')}</label><input class="input" id="cr-name" name="name" autocomplete="name"></div>
       <div class="field"><label for="cr-contact">${t('contact')}</label><input class="input" id="cr-contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX"></div>
     </div>
+    <div class="field"><label for="cr-email">${t('email')} <span class="hint">${t('optional')} · ${t('emailHint')}</span></label><input class="input" id="cr-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
     <div class="field"><label for="cr-msgr">${t('msgr')} <span class="hint">${t('optional')}</span></label><input class="input" id="cr-msgr" name="messenger" placeholder="${t('msgrPh')}"></div>
     <div class="field"><label for="cr-msg">${t('msg')} <span class="hint">${t('optional')}</span></label><textarea class="input" id="cr-msg" name="message" placeholder="${t('msgPh')}"></textarea></div>
     ${penaltyText()?`<div class="penalty" role="note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/></svg><div><b>${t('penaltyTitle')}</b><span>${esc(penaltyText())}</span>
@@ -1308,10 +1346,11 @@ function submitCustom(form){
   if (!item){ M.err='errItem'; renderModal(); return; }
   if (!name || !contact){ M.err='errReq'; renderModal(); return; }
   if (contact.replace(/\D/g,'').length < 10){ M.err='errNum'; renderModal(); return; }
+  const email = (f.email||'').trim(); if (email && !validEmail(email)){ M.err='errEmail'; renderModal(); return; }
   if (penaltyText() && !f.agree){ M.err='errAgree'; renderModal(); return; }
   if (!f.privacy){ M.err='errPrivacy'; renderModal(); return; }
-  if (API_URL) return apiSubmit({ action:'submitCustom', item, link:f.link||'', months:+f.months||0, name, contact, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
-  const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, messenger:(f.messenger||'').trim(), productId:null, productName:item, link:(f.link||'').trim(),
+  if (API_URL) return apiSubmit({ action:'submitCustom', item, link:f.link||'', months:+f.months||0, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
+  const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, email, messenger:(f.messenger||'').trim(), productId:null, productName:item, link:(f.link||'').trim(),
     price:0, months:+f.months||0, dp:0, monthly:0, last:0, total:0, message:(f.message||'').trim(), status:'Pending Review', custom:true, sample:false, lang:ui.lang };
   S.quotes.unshift(rec); save();
   M.step='done'; M.quoteId=rec.id; M.err=''; renderModal();
@@ -1322,11 +1361,12 @@ function submitQuote(form){
   const name = (f.name||'').trim(), contact = (f.contact||'').trim();
   if (!name || !contact){ M.err = 'errReq'; renderModal(); return; }
   if (contact.replace(/\D/g,'').length < 10){ M.err = 'errNum'; renderModal(); return; }
+  const email = (f.email||'').trim(); if (email && !validEmail(email)){ M.err = 'errEmail'; renderModal(); return; }
   if (penaltyText() && !f.agree){ M.err = 'errAgree'; renderModal(); return; }
   if (!f.privacy){ M.err = 'errPrivacy'; renderModal(); return; }
   const p = S.products.find(x=>x.id===M.pid), o = quoteFor(p, M.months);
-  if (API_URL) return apiSubmit({ action:'submitQuote', productId:p.id, months:M.months, name, contact, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
-  const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, messenger:(f.messenger||'').trim(), productId:p.id, productName:fullName(p), price:p.price, ...o, message:(f.message||'').trim(), status:'Pending Review', sample:false, lang:ui.lang };
+  if (API_URL) return apiSubmit({ action:'submitQuote', productId:p.id, months:M.months, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
+  const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, email, messenger:(f.messenger||'').trim(), productId:p.id, productName:fullName(p), price:p.price, ...o, message:(f.message||'').trim(), status:'Pending Review', sample:false, lang:ui.lang };
   S.quotes.unshift(rec); save();
   // Owner email notification would be sent here by a server-side integration (not connected in this prototype).
   M.step='done'; M.quoteId=rec.id; M.err=''; renderModal();
@@ -1354,13 +1394,13 @@ function renderOwner(){
   const mt = metrics();
   const body = {overview, products:ownerProducts, quotes:ownerQuotes, customers:ownerCustomers, reviews:ownerReviews, accounts:ownerAccounts, payments:ownerPayments, reminders:ownerReminders, settings:ownerSettings}[tab]();
   return `
-  ${API_URL ? `<div class="protobar"><div class="wrap"><b>Owner view</b><span id="syncbadge" data-state="ok">${syncText()}</span><button class="linkbtn small" data-act="sync-refresh">Refresh</button></div></div>`
-    : `<div class="protobar"><div class="wrap"><b>Owner view · Prototype</b><span>Data is saved only in this browser. A real launch needs a login and a server-side database before customer records go live.</span></div></div>`}
-  <header class="top"><div class="wrap">
+  ${API_URL ? `<div class="protobar"><div class="wrap wide"><b>Owner view</b><span id="syncbadge" data-state="ok">${syncText()}</span><button class="linkbtn small" data-act="sync-refresh">Refresh</button></div></div>`
+    : `<div class="protobar"><div class="wrap wide"><b>Owner view · Prototype</b><span>Data is saved only in this browser. A real launch needs a login and a server-side database before customer records go live.</span></div></div>`}
+  <header class="top"><div class="wrap wide">
     <button class="logo" data-act="home" aria-label="${esc(S.settings.shopName)}">${logoMark()}<span class="wmwrap lname">${wordmark()}<small>Owner dashboard</small></span></button>
     <nav class="topnav">${langToggle()}<a class="btn sm" href="#">View shop</a>${API_URL?'<button class="btn sm ghost" data-act="sign-out">Sign out</button>':''}</nav>
   </div></header>
-  <div class="wrap owner">
+  <div class="wrap wide owner">
     <nav class="rail" aria-label="Dashboard sections">
       ${TABS.map(([k,l])=>{ let c=''; if(k==='quotes'&&mt.pending) c=`<span class="cnt">${mt.pending}</span>`; if(k==='reviews'&&(S.reviews||[]).some(r=>r.status==='Pending')) c=`<span class="cnt">${S.reviews.filter(r=>r.status==='Pending').length}</span>`; if(k==='reminders'&&(mt.overdue||mt.dueSoon)) c=`<span class="cnt ${mt.overdue?'bad':''}">${mt.overdue+mt.dueSoon}</span>`; return `<button data-act="tab" data-tab="${k}" ${tab===k?'aria-current="page"':''}>${l}${c}</button>`; }).join('')}
     </nav>
@@ -1390,6 +1430,12 @@ function overview(){
   ${todoHTML()}
   ${cardsPanelHTML()}`;
 }
+function autoEmailStatus(){
+  const st = S.reminderStatus || {};
+  if (!S.settings.autoEmail) return `<span class="hint">Off. Emails are sent from your Google account (up to about 100 a day on a free Gmail account).</span>`;
+  if (st.trigger === false || st.trigger == null) return `<span class="warnline">One more step: open your Google Sheet and choose <b>AbotVida → Set up email reminders</b>, and allow access.</span>`;
+  return `<span class="okline">On · runs every day at about 9 AM${st.lastRun?' · last run '+fdt(st.lastRun):''}</span>`;
+}
 function todoHTML(){
   const s = S.settings, si = shopInfo(), m = msgrHref(), list = [];
   if (!m || /^https?:\/\/m\.me\/?$/i.test(m)) list.push('Facebook Page Messenger link');
@@ -1416,24 +1462,36 @@ function dueLabel(it){
 
 /* ---------- Products ---------- */
 function dpLabel(p){ return p.dpType==='percent' ? `${peso(dpOf(p))} <span class="sub">${p.dpValue}% of price</span>` : `${peso(dpOf(p))} <span class="sub">Fixed</span>`; }
+const TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>';
+function prodActions(p){
+  return ui.pendingDelete===p.id
+    ? `<button class="btn sm danger" data-act="prod-del-confirm" data-id="${p.id}">Delete</button><button class="btn sm" data-act="prod-del-cancel">Keep</button>`
+    : `<button class="btn sm" data-act="prod-edit" data-id="${p.id}">Edit</button><button class="iconbtn sm" data-act="prod-del" data-id="${p.id}" aria-label="Remove ${esc(p.name)}" title="Remove">${TRASH}</button>`;
+}
 function ownerProducts(){
+  const star = p => `<button class="hotbtn" data-act="hot-toggle" data-id="${p.id}" aria-pressed="${!!p.hot}" title="${p.hot?'Remove from':'Add to'} Hot picks">${p.hot?'★':'☆'}</button>`;
   return `
-  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Service charge and terms are set per product.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button><button class="btn primary" data-act="prod-new">Add product</button></div></div>
-  <div class="tablewrap"><table>
-    <thead><tr><th>Hot</th><th>Product</th><th>Category</th><th class="r">Item price</th><th class="r">Service charge</th><th>Terms</th><th>Status</th><th class="r">Actions</th></tr></thead>
-    <tbody>${S.products.map(p=>`<tr>
-      <td><button class="hotbtn" data-act="hot-toggle" data-id="${p.id}" aria-pressed="${!!p.hot}" title="${p.hot?'Remove from':'Add to'} Hot picks">${p.hot?'★':'☆'}</button></td>
+  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button><button class="btn primary" data-act="prod-new">Add product</button></div></div>
+  ${S.products.length?'':'<div class="empty">No products yet. Add one, or import your list from Excel.</div>'}
+  <div class="tablewrap ptable-wrap"${S.products.length?'':' hidden'}><table class="ptable">
+    <thead><tr><th>Hot</th><th>Product</th><th>Category</th><th class="r">Item price</th><th class="r">Service charge</th><th>Terms</th><th>Status</th><th class="r stick">Actions</th></tr></thead>
+    <tbody>${S.products.map(p=>`<tr class="clickable" data-act="prod-edit" data-id="${p.id}">
+      <td>${star(p)}</td>
       <td><div class="prodcell">${thumb(p,'','mini')}<div><b>${esc(p.name)}</b><span class="sub">${esc(p.brand)}${p.sample?' · Sample':''}</span></div></div></td>
       <td>${esc(p.category)}</td>
       <td class="r num">${peso(p.price)}</td>
       <td class="r num">${dpLabel(p)}</td>
-      <td class="num">${p.durations.join(', ')} mo</td>
+      <td class="num terms">${p.durations.join(', ')} mo</td>
       <td>${pill(p.status)}</td>
-      <td class="actions">${ui.pendingDelete===p.id
-        ? `<button class="btn sm danger" data-act="prod-del-confirm" data-id="${p.id}">Delete</button><button class="btn sm" data-act="prod-del-cancel">Keep</button>`
-        : `<button class="btn sm" data-act="prod-edit" data-id="${p.id}">Edit</button><button class="btn sm ghost" data-act="prod-del" data-id="${p.id}">Remove</button>`}</td>
+      <td class="actions stick">${prodActions(p)}</td>
     </tr>`).join('')}</tbody>
-  </table></div>`;
+  </table></div>
+  <div class="pcards">${S.products.map(p=>`<div class="pcard-o" data-act="prod-edit" data-id="${p.id}">
+      ${thumb(p,'','mini')}
+      <div style="min-width:0"><b>${esc(p.name)}</b><span class="meta">${esc(p.brand)} · ${esc(p.category)}${p.sample?' · Sample':''}</span></div>
+      ${star(p)}
+      <div class="row3"><span class="num"><b style="display:inline">${peso(p.price)}</b> <span class="meta">· ${peso(dpOf(p))} service · ${p.durations.join(', ')} mo</span></span>${pill(p.status)}<span style="display:flex;gap:6px">${prodActions(p)}</span></div>
+    </div>`).join('')}</div>`;
 }
 function productFormHTML(){
   const p = M.id ? S.products.find(x=>x.id===M.id) : {name:'',brand:'',category:'Smartphones',description:'',price:'',imageUrl:'',dpType:'fixed',dpValue:'',durations:[3,6,9,12],status:'Available',sourceUrl:''};
@@ -1877,8 +1935,8 @@ function ckey(c){ let d=(c||'').replace(/\D/g,''); if (d.startsWith('63') && d.l
 function customers(){
   const map = new Map();
   const touch = (k,info,ts) => {
-    if (!map.has(k)) map.set(k,{key:k,name:info.name,contact:info.contact,messenger:info.messenger||'',quotes:[],accounts:[],sample:!!info.sample,ts:-1});
-    const c = map.get(k); if (ts>=c.ts){ c.name=info.name; c.contact=info.contact; c.ts=ts; } if (info.messenger && !c.messenger) c.messenger=info.messenger; return c;
+    if (!map.has(k)) map.set(k,{key:k,name:info.name,contact:info.contact,email:info.email||'',messenger:info.messenger||'',quotes:[],accounts:[],sample:!!info.sample,ts:-1});
+    const c = map.get(k); if (ts>=c.ts){ c.name=info.name; c.contact=info.contact; c.ts=ts; } if (info.messenger && !c.messenger) c.messenger=info.messenger; if (info.email && (ts>=c.ts || !c.email)) c.email=info.email; return c;
   };
   S.quotes.forEach(q=>touch(ckey(q.contact),q,q.createdAt).quotes.push(q));
   S.accounts.forEach(a=>touch(ckey(a.customer.contact),{...a.customer,sample:a.sample},0).accounts.push(a));
@@ -1944,7 +2002,7 @@ function customerHTML(){
   const pays = c.accounts.flatMap(a=>a.schedule.flatMap(it=>(it.payments||[]).map(p=>({a,it,p})))).sort((x,y)=>y.p.date.localeCompare(x.p.date)||y.p.at-x.p.at);
   const pend = c.quotes.filter(q=>q.status==='Pending Review');
   return `<div class="m-head"><div><p class="eyebrow">Customer${c.sample?' · Sample':''}</p><h2 style="font-size:24px;margin-top:4px">${esc(c.name)}</h2>
-      <p class="small muted num" style="margin-top:4px">${esc(c.contact)}${ml?` · <a href="${esc(ml)}" target="_blank" rel="noopener">Messenger profile</a>`:''}</p></div>
+      <p class="small muted num" style="margin-top:4px">${esc(c.contact)}${c.email?` · <a href="mailto:${esc(c.email)}">${esc(c.email)}</a>`:''}${ml?` · <a href="${esc(ml)}" target="_blank" rel="noopener">Messenger profile</a>`:''}</p></div>
     <button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
   <div class="m-body">
     <div class="infogrid">
@@ -1981,7 +2039,7 @@ function customerHTML(){
 
 /* ---------- Create an account (from a quote, or added by the owner) ---------- */
 function createAccount(q, start, first, dpPaid, cardId){
-  const a = { id:uid('A-'), quoteId:q.id, customer:{name:q.name,contact:q.contact,messenger:q.messenger}, productId:q.productId, productName:q.productName, price:q.price, dp:q.dp, dpPaid:!!dpPaid, dpPaidDate:dpPaid?today():'', months:q.months, monthly:q.monthly, startDate:start, firstDue:first, dueDay:parse(first).getDate(), schedule:buildSchedule(q.price,q.months,first).map(it=>({...it,payments:[]})), cardId:cardId||'', cancelled:false, sample:false };
+  const a = { id:uid('A-'), quoteId:q.id, customer:{name:q.name,contact:q.contact,email:q.email||'',messenger:q.messenger}, productId:q.productId, productName:q.productName, price:q.price, dp:q.dp, dpPaid:!!dpPaid, dpPaidDate:dpPaid?today():'', months:q.months, monthly:q.monthly, startDate:start, firstDue:first, dueDay:parse(first).getDate(), schedule:buildSchedule(q.price,q.months,first).map(it=>({...it,payments:[]})), cardId:cardId||'', cancelled:false, sample:false };
   S.accounts.unshift(a); q.status='Approved'; q.accountId=a.id; save(); return a;
 }
 function defaultTerm(p){ return p.durations.includes(12) ? 12 : p.durations[Math.floor((p.durations.length-1)/2)]; }
@@ -2000,6 +2058,7 @@ function newPurchaseHTML(){
       <div class="field"><label for="np-name">Customer name</label><input class="input" id="np-name" name="name" value="${esc(c?.name||'')}" required></div>
       <div class="field"><label for="np-contact">Contact number</label><input class="input num" id="np-contact" name="contact" inputmode="tel" value="${esc(c?.contact||'')}" placeholder="09XX XXX XXXX" required></div>
     </div>
+    <div class="field"><label for="np-email">Email <span class="hint">(optional, for automatic reminders)</span></label><input class="input" id="np-email" name="email" type="email" value="${esc(c?.email||'')}"></div>
     <div class="field"><label for="np-msgr">Messenger profile <span class="hint">(optional)</span></label><input class="input" id="np-msgr" name="messenger" value="${esc(c?.messenger||'')}"></div>
     <div class="row2">
       <div class="field"><label for="np-prod">Product</label><select class="input" id="np-prod" name="pid">${prods.map(p=>`<option value="${p.id}">${esc(fullName(p))} · ${peso(p.price)}</option>`).join('')}</select></div>
@@ -2022,12 +2081,13 @@ function submitNewPurchase(form){
   let err='';
   if (!name || !contact) err='Enter the customer name and contact number.';
   else if (contact.replace(/\D/g,'').length<10) err='Enter a valid mobile number, for example 0917 123 4567.';
+  else if ((f.email||'').trim() && !validEmail((f.email||'').trim())) err='Check the email address, or leave it blank.';
   else if (!p || !p.durations.includes(months)) err='Choose a product and term.';
   else if (!f.start || !f.first) err='Choose both dates.';
   else if (f.first < f.start) err='The first due date should be on or after the start date.';
   if (err){ M.err=err; renderModal(); return; }
   const o = quoteFor(p, months);
-  const q = { id: API_URL ? 'MA-'+Date.now().toString(36).toUpperCase() : 'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, messenger:(f.messenger||'').trim(), productId:p.id, productName:fullName(p), price:p.price, ...o, message:'Added by owner', status:'Approved', sample:false };
+  const q = { id: API_URL ? 'MA-'+Date.now().toString(36).toUpperCase() : 'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, email:(f.email||'').trim(), messenger:(f.messenger||'').trim(), productId:p.id, productName:fullName(p), price:p.price, ...o, message:'Added by owner', status:'Approved', sample:false };
   S.quotes.unshift(q);
   const a = createAccount(q, f.start, f.first, !!f.dpPaid, f.cardId);
   toast('Purchase added'); M = {kind:'account', id:a.id, fromCust:ckey(contact)}; renderModal(); render();
@@ -2071,6 +2131,7 @@ function accountHTML(){
       <div><span>Paid so far</span><b>${peso(acctPaid(a))}</b></div>
       <div><span>Remaining balance</span><b>${peso(acctBalance(a))}</b></div>
       <div><span>Contact</span><b>${esc(a.customer.contact)}</b></div>
+      <div><span>Email</span><b>${a.customer.email?esc(a.customer.email):'—'}</b></div>
       <div><span>Start date</span><b>${fdate(a.startDate)}</b></div>
       <div><span>First due</span><b>${fdate(a.firstDue)}</b></div>
       <div><span>Due day</span><b>Every ${a.dueDay}${ord(a.dueDay)}</b></div>
@@ -2189,6 +2250,7 @@ function editAcctHTML(){
       <div class="field"><label for="ea-name">Name</label><input class="input" id="ea-name" name="name" value="${esc(a.customer.name)}"></div>
       <div class="field"><label for="ea-contact">Contact number</label><input class="input num" id="ea-contact" name="contact" value="${esc(a.customer.contact)}"><span class="hint">Purchases are grouped by this number.</span></div>
     </div>
+    <div class="field"><label for="ea-email">Email <span class="hint">for automatic reminders</span></label><input class="input" id="ea-email" name="email" type="email" value="${esc(a.customer.email||'')}" placeholder="Leave blank if none"></div>
     <div class="field"><label for="ea-msgr">Messenger profile</label><input class="input" id="ea-msgr" name="messenger" value="${esc(a.customer.messenger||'')}"></div>
 
     <h3 class="m-sec">Purchase</h3>
@@ -2229,7 +2291,8 @@ function submitEditAcct(form){
     if (f.follow) a.dueDay = parse(f.date).getDate();
     a.firstDue = a.schedule[0].due;
   }
-  a.customer = { name, contact, messenger:(f.messenger||'').trim() };
+  const email = (f.email||'').trim(); if (email && !validEmail(email)){ M.err='Check the email address, or leave it blank.'; renderModal(); return; }
+  a.customer = { name, contact, email, messenger:(f.messenger||'').trim() };
   a.cardId = f.cardId||'';
   a.reminder = { on:!!f.remOn, daysBefore:days, channel:f.channel, message:(f.message||'').trim(), snoozeUntil:f.snoozeUntil||'' };
   save(); toast('Account updated');
@@ -2238,8 +2301,19 @@ function submitEditAcct(form){
 
 /* ---------- Reminders ---------- */
 function reminderText(a,it){
+  if (instStatus(it)==='Overdue') return `Hi ${a.customer.name.split(' ')[0]}, your installment payment of ${peso(remaining(it))} was due on ${fdate(it.due)} and we have not received it yet. ${S.settings.penaltyEn?S.settings.penaltyEn+' ':''}Please pay as soon as you can, or message us if you need help.`;
   const tpl = remOf(a).message || S.settings.reminderTemplate;
   return tpl.replaceAll('{name}',a.customer.name.split(' ')[0]).replaceAll('{amount}',peso(remaining(it))).replaceAll('{date}',fdate(it.due));
+}
+function emailedLine(a,it){
+  const l = (S.emailLog||[]).filter(x=>x.accountId===a.id && x.n===it.n).sort((x,y)=>y.at-x.at)[0];
+  return l ? `<p class="okline">Reminder email sent ${fdt(l.at)}</p>` : '';
+}
+function reminderCallout(){
+  if (!API_URL) return `<div class="callout">${I.info}<span><b>Manual reminders.</b> Automatic email reminders work once the shop is connected to Google Sheets. Until then, copy the message and send it yourself.</span></div>`;
+  const on = !!S.settings.autoEmail, st = S.reminderStatus || {}, withEmail = S.accounts.filter(a=>!a.cancelled && a.customer && a.customer.email).length;
+  if (!on) return `<div class="callout">${I.info}<span><b>Automatic email reminders are off.</b> Turn them on in <button class="linkbtn" data-act="tab" data-tab="settings">Settings</button> to email customers who gave an email address. Messenger and SMS reminders are always sent by you: copy the message below.</span></div>`;
+  return `<div class="callout">${I.info}<span><b>Automatic email reminders are on.</b> Every morning, customers with an email get a reminder ${S.settings.dueSoonDays} days before their due date (or the number set on their account), on the due date, and once a week while overdue. ${withEmail} account${withEmail===1?' has':'s have'} an email.${st.trigger===false?' <b style="color:var(--warn)">Not running yet: open your Google Sheet and choose AbotVida → Set up email reminders.</b>':''} Customers without email: copy the message below and send it yourself.</span></div>`;
 }
 function ownerReminders(){
   const T = today();
@@ -2255,7 +2329,7 @@ function ownerReminders(){
   const card = ({a,it,r}) => { const txt=reminderText(a,it), ml=linkify(a.customer.messenger); return `<div class="rem">
       <div class="top"><div><button class="linkbtn" data-act="open-cust" data-id="${esc(ckey(a.customer.contact))}">${esc(a.customer.name)}</button> <span class="muted small num">· ${esc(a.customer.contact)}</span>
         <p class="small muted">${esc(a.productName)} · #${it.n} of ${a.months} · ${dueLabel(it)}</p>
-        <p class="small muted">Remind via ${esc(r.channel)}${r.message?' · custom message':''}</p></div><b class="num" style="font-size:18px">${peso(remaining(it))}</b></div>
+        <p class="small muted">Remind via ${esc(r.channel)}${r.message?' · custom message':''}${a.customer.email?' · '+esc(a.customer.email):''}</p>${emailedLine(a,it)}</div><b class="num" style="font-size:18px">${peso(remaining(it))}</b></div>
       <div class="msg">${esc(txt)}</div>
       <div class="acts">
         <button class="btn sm primary" data-act="copy-rem" data-a="${a.id}" data-n="${it.n}">Copy message</button>
@@ -2268,7 +2342,7 @@ function ownerReminders(){
       </div></div>`; };
   const uniq = list => [...new Map(list.map(x=>[x.a.id,x])).values()];
   return `<div class="o-head"><div><h2>Reminders</h2><p class="muted small">Copy a friendly message and send it through each customer's preferred channel.</p></div></div>
-  <div class="callout">${I.info}<span><b>Manual reminders.</b> Automatic reminders are not active. Sending by email needs an email integration, and automatic Messenger messages need Meta's Messenger Platform. Until then, copy the message and send it yourself.</span></div>
+  ${reminderCallout()}
   ${groups.map(([title,cls,items])=>`<div class="rem-group"><h3>${title} <span class="pill ${cls} plain">${items.length}</span></h3>
     ${items.length?items.sort((x,y)=>x.it.due.localeCompare(y.it.due)).map(card).join(''):`<p class="muted small" style="padding:4px 0 8px">None right now.</p>`}</div>`).join('')}
   ${snoozed.length||paused.length?`<div class="rem-group"><h3>Snoozed or paused <span class="pill plain">${uniq([...snoozed,...paused]).length}</span></h3>
@@ -2292,6 +2366,9 @@ function ownerSettings(){
         <div class="field"><label for="st-days">"Due soon" window (days)</label><input class="input num" id="st-days" name="dueSoonDays" type="number" min="1" max="31" value="${s.dueSoonDays}"></div>
         <div class="field"><label for="st-pen-en">Late payment penalty</label><textarea class="input" id="st-pen-en" name="penaltyEn">${esc(s.penaltyEn||'')}</textarea><span class="hint">Shown to customers on every offer, and they must tick "I understand" before sending a request. Add your exact amount, e.g. "₱100 for every week late."</span></div>
         <div class="field"><label for="st-tpl">Reminder message</label><textarea class="input" id="st-tpl" name="reminderTemplate">${esc(s.reminderTemplate)}</textarea><span class="hint">Use {name}, {amount} and {date}.</span></div>
+        ${API_URL?`<div class="field"><span class="lab">Automatic email reminders</span>
+          <label for="st-auto" class="agree-line"><input type="checkbox" id="st-auto" name="autoEmail" ${s.autoEmail?'checked':''}> Email customers who gave an email address: before the due date, on the due date, and weekly while overdue</label>
+          ${autoEmailStatus()}</div>`:''}
         <h3 class="m-sec">Shown to customers</h3>
         <p class="small muted" style="margin-top:-6px">Blank details stay hidden on the shop until you fill them in.</p>
         <div class="field"><label for="si-fb">Facebook Page link</label><input class="input" id="si-fb" name="si_fbPage" value="${esc(shopInfo().fbPage||'')}" placeholder="https://facebook.com/YourPage"><span class="hint">Shown in the footer.</span></div>
@@ -2475,8 +2552,10 @@ async function syncPush(){
     else if ((r.added||{})[c]){ const base = JSON.parse(SY.synced[c]||'[]'), add = r.added[c].filter(x=>!base.some(y=>y.id===x.id)); SY.synced[c] = JSON.stringify(base.concat(add)); SY.known[c] = (SY.known[c]||[]).concat(add.map(x=>x.id)); }
   });
   if (sent.settings) SY.synced.settings = JSON.stringify(sent.settings);
+  const stChanged = !!r.reminderStatus && JSON.stringify(r.reminderStatus) !== JSON.stringify(S.reminderStatus);
+  if (r.reminderStatus) S.reminderStatus = r.reminderStatus;
   SY.err = ''; SY.savedAt = r.savedAt || Date.now();
-  if (arrived && !M){ const y=window.scrollY; render(); window.scrollTo(0,y); toast(arrived===1?'1 new item arrived':`${arrived} new items arrived`); }
+  if ((arrived || stChanged) && !M){ const y=window.scrollY; render(); window.scrollTo(0,y); if (arrived) toast(arrived===1?'1 new item arrived':`${arrived} new items arrived`); }
   else syncBadge();
   if (SY.again || SY.dirty || JSON.stringify(syncSnapshot(S)) !== JSON.stringify(SY.synced)){ SY.again = false; syncQueue(); }
 }
@@ -2579,6 +2658,7 @@ function route(){
   else if (h.startsWith('item-')){ view='product'; ui.pid=h.slice(5); addRecent(ui.pid); }
   else view='shop';
   if (API_URL && view==='owner' && !SY.ready && SY.token && !SY.loading){ SY.loading=true; ownerLoad(); }
+  if (!API_URL && view==='owner'){ try{ localStorage.setItem(OWNER_DEV,'1'); }catch(e){} }
   closeModal(); render();
   window.scrollTo({top:(view==='shop' && prev==='product') ? ui.homeY : 0, behavior:'instant'});
 }
@@ -2606,6 +2686,7 @@ document.addEventListener('click', e=>{
       document.querySelectorAll('[data-act="theme"]').forEach(b=>{ b.innerHTML = ui.theme==='dark'?SUN:MOON; b.setAttribute('aria-label', themeLabel()); b.title = themeLabel(); }); break;
     case 'req-any': M={kind:'custom',step:'form',err:''}; renderModal(); break;
     case 'privacy-open': M={kind:'privacy'}; renderModal(); break;
+    case 'owner-tap': ownerTap(); break;
     case 'review-open': M={kind:'review',step:'form',rating:0,err:''}; renderModal(); break;
     case 'rate': { const keep = Object.fromEntries(['rv-name','rv-item','rv-text'].map(k=>[k,document.getElementById(k)?.value||''])); const ok=document.getElementById('rv-ok')?.checked; M.rating=+el.dataset.n; renderModal(); Object.entries(keep).forEach(([k,v])=>{ const x=document.getElementById(k); if(x) x.value=v; }); const c=document.getElementById('rv-ok'); if(c) c.checked=!!ok; modalRoot.querySelector(`[data-n="${M.rating}"]`)?.focus(); break; }
     case 'rev-approve': S.reviews.find(r=>r.id===id).status='Approved'; save(); render(); toast('Review is now on the shop page'); break;
@@ -2768,6 +2849,7 @@ document.addEventListener('submit', e=>{
   else if (k==='settings'){
     const f = Object.fromEntries(new FormData(form));
     Object.assign(S.settings, { shopName:f.shopName.trim()||'AbotVida', tagline:(f.tagline||'').trim(), messengerUrl:f.messengerUrl.trim(), ownerEmail:f.ownerEmail.trim(), dueSoonDays:Math.max(1,Math.min(31,+f.dueSoonDays||7)), reminderTemplate:f.reminderTemplate.trim()||S.settings.reminderTemplate, penaltyEn:(f.penaltyEn||'').trim(),
+      ...(API_URL ? { autoEmail: !!f.autoEmail } : {}),
       shopInfo:{ fbPage:(f.si_fbPage||'').trim(), location:(f.si_location||'').trim(), hours:(f.si_hours||'').trim(), deliveryAreas:(f.si_deliveryAreas||'').trim(), dtiNo:(f.si_dtiNo||'').trim(), privacyEmail:(f.si_privacyEmail||'').trim() } });
     save(); render(); toast('Settings saved');
   }
