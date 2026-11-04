@@ -10,7 +10,8 @@
 // The AI only receives the finished numbers, so it can't get them wrong.
 
 const SHEET_API = 'https://script.google.com/macros/s/AKfycbwn66tGLtX6le9O7Zrhe3dhK8J6JinUoP-u6D95q_6EeoDVVVfxnf4WNQdver3BWBPUDQ/exec';
-const MODELS = ['gemini-flash-latest', 'gemini-2.5-flash'];   // tried in order; GEMINI_MODEL goes first if set
+// Tried in order. If one is busy, over its free limit or not available, the next one answers. GEMINI_MODEL goes first if set.
+const MODELS = ['gemini-flash-latest', 'gemini-2.5-flash', 'gemini-flash-lite-latest', 'gemini-2.5-flash-lite'];
 const PER_HOUR = 20;            // messages per visitor per hour
 const DAILY_DEFAULT = 600;      // messages per day for the whole shop (keeps you inside Gemini's free allowance)
 const MAX_TURNS = 12, MAX_CHARS = 600;
@@ -172,12 +173,16 @@ async function chat(request, env) {
     generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
   };
   const models = [env.GEMINI_MODEL, ...MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
+  let last = { ok: false, error: 'busy', why: 'no model answered' };
   for (const model of models) {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body: JSON.stringify(payload),
     });
-    if (r.status === 404) continue;                       // model name not available: try the next one
-    if (r.status === 429) return json({ ok: false, error: 'limit' });
+    if ([404, 429, 500, 503].includes(r.status)) {           // not available, over its limit, or busy: try the next model
+      const t = await r.text(); let st = ''; try { st = JSON.parse(t).error.status || ''; } catch (e) {}
+      last = r.status === 429 ? { ok: false, error: 'limit', why: model + ' 429 ' + st } : { ok: false, error: 'busy', why: model + ' ' + r.status + ' ' + st };
+      continue;
+    }
     // "why" is a short technical reason (never the key) to help the owner fix setup problems.
     if (!r.ok) { const t = await r.text(); console.log('gemini', model, r.status, t.slice(0, 300));
       let why = model + ' ' + r.status; try { const e = JSON.parse(t).error || {}; why += ' ' + (e.status || '') + ': ' + String(e.message || '').slice(0, 160); } catch (e) {}
@@ -187,5 +192,5 @@ async function chat(request, env) {
     if (!text) return json({ ok: false, error: 'busy', why: model + ' empty: ' + (cand.finishReason || (d.promptFeedback && d.promptFeedback.blockReason) || 'no candidates') });
     return json({ ok: true, reply: text.slice(0, 2500) });
   }
-  return json({ ok: false, error: 'busy', why: 'no model found: ' + models.join(', ') });
+  return json(last);
 }
