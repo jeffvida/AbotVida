@@ -63,6 +63,7 @@ function doPost(e) {
       case 'submitQuote': return json(submitQuote(body));
       case 'submitCustom': return json(submitCustom(body));
       case 'submitReview': return json(submitReview(body));
+      case 'balance': return json(checkBalance(body));
       case 'login': return json(login(body));
       case 'logout': return json(logout(body));
       case 'ownerLoad': requireOwner(body); return json({ ok: true, state: readAll() });
@@ -222,6 +223,33 @@ function submitReview(b) {
     return { ok: true };
   });
 }
+// "Check my balance": the customer enters their reference number (MQ-…) and the mobile number they used.
+// Both must match. Only what the customer needs is sent back: no contact details, notes or card info.
+// Wrong tries are limited (10 per reference number and 300 in total per hour) so numbers can't be guessed.
+function normRef(s) { const d = String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^MQ/, ''); return d ? 'MQ-' + d : ''; }
+function checkBalance(b) {
+  const ref = normRef(b.ref), phone = digits(b.phone).slice(-10);
+  if (!ref || phone.length < 10) fail('errBalReq');
+  const c = CacheService.getScriptCache(), fk = 'bf_' + ref, fails = +c.get(fk) || 0, all = +c.get('bf_all') || 0;
+  if (fails >= 10 || all >= 300) fail('errBusy');
+  const q = readColl('quotes').filter(x => String(x.id).toUpperCase() === ref)[0];
+  if (!q || digits(q.contact).slice(-10) !== phone) { c.put(fk, String(fails + 1), 3600); c.put('bf_all', String(all + 1), 3600); fail('errBalNone'); }
+  const first = String(q.name || '').trim().split(/\s+/)[0] || '';
+  const a = readColl('accounts').filter(x => x.quoteId === q.id)[0];
+  if (!a) return { ok: true, kind: 'request', firstName: first, item: q.productName, months: q.months || 0, status: q.status };
+  const T = todayStr(), soon = +readSettings().dueSoonDays || 7;
+  const sched = (a.schedule || []).map(it => {
+    const amount = +it.amount || 0, paid = +it.paid || 0, d = dayDiff(T, it.due);
+    const st = paid >= amount - 0.001 ? 'Paid' : d < 0 ? 'Overdue' : d <= soon ? 'Due' : 'Upcoming';
+    return { n: it.n, due: it.due, amount: amount, paid: round2(paid), status: st };
+  });
+  const paid = round2(sched.reduce((s, i) => s + i.paid, 0)), next = sched.filter(i => i.status !== 'Paid')[0] || null;
+  const status = a.cancelled ? 'Cancelled' : !next ? 'Fully Paid' : sched.some(i => i.status === 'Overdue') ? 'Overdue' : 'Active';
+  return { ok: true, kind: 'account', firstName: first, ref: q.id, item: a.productName, price: a.price, months: a.months, monthly: a.monthly,
+    dp: a.dp, dpPaid: !!a.dpPaid, paid: paid, balance: round2(a.price - paid), status: status, today: T,
+    next: next ? { n: next.n, due: next.due, amount: round2(next.amount - next.paid), status: next.status } : null, schedule: sched };
+}
+
 // Optional email to the owner for each new request (uses "Owner email" in Settings).
 function notifyOwner(q) {
   try {

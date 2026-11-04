@@ -353,6 +353,73 @@ body.is-shop .step p{font-size:15px}
 .empty{padding:32px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);background:var(--bg)}
 .shopbar .wrap{gap:10px}
 .shopbar .logo{margin-right:0;flex:none}
+.balcard{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:var(--raised)}
+.bal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.bal-top b{display:block}
+.bal-amt{display:flex;flex-direction:column;margin:12px 0 8px}
+.bal-amt span{font-size:12px;color:var(--muted)}
+.bal-amt b{font-family:var(--f-display);font-size:30px;line-height:1.15}
+.balnext{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--accent-soft)}
+.balnext span:first-child{font-size:12px;font-weight:600}
+.balnext b{grid-row:span 2;font-size:20px;font-family:var(--f-display)}
+.balnext span:last-child{font-size:13px;color:var(--muted)}
+.balnext.bad{background:var(--bad-soft,#FDECEC)} .balnext.bad span:first-child{color:var(--bad)}
+.balnext.ok{background:var(--ok-soft)}
+.balsched{margin-top:12px;border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+.balsched summary{cursor:pointer;font-weight:600}
+.balsched table{width:100%;margin-top:8px;font-size:13px}
+.balsched th,.balsched td{padding:6px 4px;text-align:left;border-bottom:1px solid var(--line)}
+.balsched .r{text-align:right}
+.agreement{background:#fff;color:#14234B;border:1px solid var(--line);border-radius:14px;padding:22px;font-size:13px;line-height:1.5}
+:root .agreement .wm{color:#103568;font-size:20px}
+.agreement .wm .v{color:#F7801E}
+.ag-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;border-bottom:2px solid #F7801E;padding-bottom:12px;margin-bottom:10px}
+.ag-top .flock{display:flex;align-items:center;gap:8px}
+.ag-top .mark.av{width:52px;height:30px}
+.ag-ref{display:flex;flex-direction:column;text-align:right;font-size:12px;color:#4A5675}
+.ag-ref b{font-size:16px;color:#14234B}
+.ag-small{font-size:12px;color:#4A5675;margin:8px 0}
+.ag-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:600px){.ag-cols{grid-template-columns:1fr}.agreement{padding:14px}}
+.agreement table{width:100%;border-collapse:collapse;margin:10px 0;font-variant-numeric:tabular-nums}
+.agreement caption{text-align:left;font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#4A5675;padding-bottom:4px}
+.ag-t th{text-align:left;font-weight:600;color:#4A5675;width:42%;padding:5px 8px 5px 0;border-bottom:1px solid #E3E8F0;vertical-align:top}
+.ag-t td{padding:5px 0;border-bottom:1px solid #E3E8F0}
+.ag-note{display:block;font-size:11px;color:#6B7590}
+.ag-sched th,.ag-sched td{padding:4px 6px;border-bottom:1px solid #E3E8F0;text-align:left}
+.ag-sched .r{text-align:right}
+.ag-sched thead th{background:#EEF2F7;font-size:12px}
+.ag-sched tfoot td{font-weight:700;border-bottom:0}
+.ag-terms ol{margin:6px 0 0 18px;padding:0}
+.ag-terms li{margin-bottom:4px}
+.ag-sign{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:34px}
+.ag-sign div{display:flex;flex-direction:column;font-size:12px;color:#4A5675}
+.ag-sign b{color:#14234B;font-size:13px}
+.ag-line{border-bottom:1px solid #14234B;height:36px;margin-bottom:6px}
+@media print{
+  @page{margin:14mm}
+  body{overflow:visible!important;background:#fff!important}
+  #app,#toast{display:none!important}
+  #modal-root .overlay{position:static;background:none;padding:0;overflow:visible;display:block}
+  #modal-root .modal{box-shadow:none;max-width:none;border-radius:0;background:#fff;animation:none}
+  #modal-root .m-body{padding:0}
+  .no-print{display:none!important}
+  .agreement{border:0;padding:0;font-size:12px}
+  .ag-sched tr{break-inside:avoid}
+}
+.mbody{padding:14px 16px;display:grid;gap:14px}
+.mrow{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:baseline}
+.mcollect .mrow:first-child b{font-size:20px;font-family:var(--f-display)}
+.mstats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:900px){.mstats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.mstat{background:var(--surface);border-radius:12px;padding:10px 12px;min-width:0;display:flex;flex-direction:column;gap:2px}
+.mstat span{font-size:12px;color:var(--muted)}
+.mstat b{font-size:18px}
+.mstat small{font-size:12px;color:var(--muted)}
+.mstat.ok b{color:var(--ok)} .mstat.warn b{color:var(--warn)}
+.mbills{border-top:1px solid var(--line);padding-top:12px;display:grid;gap:6px}
+.ptools{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.psearch{max-width:520px;flex:none}
 .topsearch{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 14px}
 .topsearch:focus-within{border-color:var(--accent);background:var(--bg)}
 .topsearch input{border:0;outline:0;background:transparent;width:100%;min-width:0;font-size:15px}
@@ -1202,7 +1269,7 @@ function renderShop(){
     <section class="block" id="catalogwrap"><div class="wrap" id="catalog">${catalogHTML()}</div></section>
     <div class="home-only">${socialHTML()}</div>
     ${faqHTML()}
-    <footer><div class="wrap"><div class="fbrand"><span class="flock">${logoMark()}${wordmark()}</span><span class="tagline">${esc(S.settings.tagline||'')}</span><span class="small muted">${t('descriptor')}</span>${footerInfoHTML()}</div><span data-act="owner-tap" style="user-select:none">© ${new Date().getFullYear()} ${esc(S.settings.shopName)} · Philippines</span><span class="flinks"><button class="linkbtn small" data-act="review-open">${t('reviewCta')} ${t('writeReview')}</button><button class="linkbtn small" data-act="privacy-open">${t('privacy')}</button></span><span>${protoOn()?t('footer'):t('footerLive')}</span></div></footer>
+    <footer><div class="wrap"><div class="fbrand"><span class="flock">${logoMark()}${wordmark()}</span><span class="tagline">${esc(S.settings.tagline||'')}</span><span class="small muted">${t('descriptor')}</span>${footerInfoHTML()}</div><span data-act="owner-tap" style="user-select:none">© ${new Date().getFullYear()} ${esc(S.settings.shopName)} · Philippines</span><span class="flinks"><button class="linkbtn small" data-act="balance-open">Check my balance</button><button class="linkbtn small" data-act="review-open">${t('reviewCta')} ${t('writeReview')}</button><button class="linkbtn small" data-act="privacy-open">${t('privacy')}</button></span><span>${protoOn()?t('footer'):t('footerLive')}</span></div></footer>
   </main>
   ${bottomNav()}`;
 }
@@ -1310,6 +1377,7 @@ function offerHTML(){
         <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
       </div>
       <p class="small muted" style="margin-top:12px">${t('tip')}</p>
+      <p class="small muted" style="margin-top:10px">Keep your reference number. Once approved, use it to <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime.</p>
     </div></div>`;
   }
 
@@ -1380,7 +1448,7 @@ function customHTML(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">
         ${m?`<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>${t('cont')}</span></a>`:''}
         <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
-      </div></div></div>`;
+      </div><p class="small muted" style="margin-top:10px">Keep your reference number. Once approved, use it to <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime.</p></div></div>`;
   }
   return `${head}<div class="m-body"><form class="form" data-form="custom" novalidate>
     <p class="muted">${t('reqSub')}</p>
@@ -1432,6 +1500,74 @@ function submitQuote(form){
   S.quotes.unshift(rec); save();
   // Owner email notification would be sent here by a server-side integration (not connected in this prototype).
   M.step='done'; M.quoteId=rec.id; M.err=''; renderModal();
+}
+
+/* ---------- Check my balance (customer) ---------- */
+// The customer enters their reference number and mobile number. On the live shop the Google Sheet checks both
+// and sends back only this account's payment details. In the preview it looks up the sample data instead.
+const BAL_ERR = { errBalReq:'Enter your reference number (for example MQ-1001) and the mobile number you used.', errBalNone:'We couldn\'t find an account with that reference number and mobile number. Check both and try again, or message us.', errBusy:'Too many tries. Please wait an hour and try again, or message us.', errNet:'We couldn\'t connect. Check your internet and try again.' };
+const normRef = v => { const d = String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^MQ/,''); return d ? 'MQ-'+d : ''; };
+function localBalance(ref, phone){
+  const q = S.quotes.find(x=>String(x.id).toUpperCase()===ref);
+  if (!q || String(q.contact).replace(/\D/g,'').slice(-10)!==phone) return { ok:false, error:'errBalNone' };
+  const first = String(q.name||'').trim().split(/\s+/)[0]||'', a = S.accounts.find(x=>x.quoteId===q.id);
+  if (!a) return { ok:true, kind:'request', firstName:first, item:q.productName, months:q.months||0, status:q.status };
+  const sched = a.schedule.map(it=>({ n:it.n, due:it.due, amount:it.amount, paid:r2(it.paid), status:instStatus(it) })), nx = sched.find(i=>i.status!=='Paid');
+  return { ok:true, kind:'account', firstName:first, ref:q.id, item:a.productName, price:a.price, months:a.months, monthly:a.monthly, dp:a.dp, dpPaid:!!a.dpPaid,
+    paid:acctPaid(a), balance:acctBalance(a), status:acctStatus(a), next: nx ? { n:nx.n, due:nx.due, amount:r2(nx.amount-nx.paid), status:nx.status } : null, schedule:sched };
+}
+async function submitBalance(form){
+  if (M.sending) return;
+  const f = Object.fromEntries(new FormData(form)), ref = normRef(f.ref), phone = String(f.phone||'').replace(/\D/g,'').replace(/^63(?=\d{10}$)/,'0').slice(-10);
+  M.ref = f.ref||''; M.phone = f.phone||'';
+  if (!ref || phone.length<10){ M.err='errBalReq'; renderModal(); return; }
+  let r;
+  if (API_URL){
+    const mine = M, btn = form.querySelector('[type=submit]'); M.sending = true; if (btn){ btn.disabled=true; btn.textContent='Checking…'; }
+    try{ r = await api({ action:'balance', ref, phone }); }catch(e){ r = { ok:false, error:'errNet' }; }
+    if (M !== mine) return; M.sending = false;
+  } else r = localBalance(ref, phone);
+  if (!r || !r.ok){ M.err = (r && BAL_ERR[r.error]) ? r.error : 'errNet'; renderModal(); return; }
+  M.res = r; M.err = ''; renderModal();
+}
+function balanceHTML(){
+  const m = msgrHref(), msgr = m ? `<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>Message us</span></a>` : '';
+  const head = `<div class="m-head"><div><p class="eyebrow">Your account</p><h2 style="font-size:22px;margin-top:4px">Check my balance</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>`;
+  const r = M.res;
+  if (r && r.kind==='request'){
+    const msg = { 'Pending Review':'We\'re still reviewing your request. We\'ll message you soon.', 'Declined':'We weren\'t able to approve this request. Message us if you have questions.', 'Completed':'This request is completed.', 'Approved':'Your request is approved. Your payment schedule will show here once your account is set up.' }[r.status] || '';
+    return `${head}<div class="m-body"><div class="done"><h3 style="font-size:20px">Hi ${esc(r.firstName)}!</h3><p class="muted" style="margin-top:6px">${esc(r.item)}${r.months?' · '+esc(mos(r.months)):''}</p>
+      <div style="margin-top:12px">${statusPill(r.status)}</div><p style="margin-top:12px">${esc(msg)}</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">${msgr}<button class="btn" data-act="bal-again">Check another</button></div></div></div>`;
+  }
+  if (r){
+    const pct = r.price ? Math.min(100, r.paid/r.price*100) : 0, paidN = r.schedule.filter(i=>i.status==='Paid').length;
+    const nx = r.next, lab = st => st==='Paid'?'Paid':st==='Overdue'?'Overdue':st==='Due'?'Due soon':'Upcoming';
+    return `${head}<div class="m-body">
+      <p class="muted">Hi ${esc(r.firstName)}! Here's your account as of today.</p>
+      <div class="balcard">
+        <div class="bal-top"><div style="min-width:0"><b>${esc(r.item)}</b><span class="small muted num">${esc(r.ref)} · ${esc(mos(r.months))}</span></div>${statusPill(r.status)}</div>
+        <div class="bal-amt"><span>Remaining balance</span><b class="num">${peso(r.balance)}</b></div>
+        <div class="bar" style="height:10px"><i style="width:${pct.toFixed(1)}%"></i></div>
+        <div class="mrow small num" style="margin-top:6px"><span>Paid ${peso(r.paid)} of ${peso(r.price)}</span><span>${paidN} of ${r.months} payments</span></div>
+      </div>
+      ${nx && r.status!=='Cancelled'?`<div class="balnext ${nx.status==='Overdue'?'bad':''}"><span>${nx.status==='Overdue'?'Overdue payment':'Next payment'} · #${nx.n}</span><b class="num">${peso(nx.amount)}</b><span>${nx.status==='Overdue'?'Was due':'Due'} ${fdate(nx.due)}</span></div>
+        ${nx.status==='Overdue' && penaltyText()?`<p class="small" style="color:var(--bad);margin-top:8px">${esc(penaltyText())}</p>`:''}`
+        : r.status==='Fully Paid'?`<div class="balnext ok"><span>All payments are done</span><b>Thank you!</b></div>`:''}
+      <details class="balsched"><summary>Payment schedule</summary><table><thead><tr><th>#</th><th>Due date</th><th class="r">Amount</th><th>Status</th></tr></thead>
+        <tbody>${r.schedule.map(i=>`<tr><td class="num">${i.n}</td><td class="num">${fdate(i.due)}</td><td class="r num">${peso(i.amount)}${i.paid>0&&i.paid<i.amount?`<span class="sub">${peso(i.paid)} paid</span>`:''}</td><td><span class="pill ${PILL[i.status]||''}">${lab(i.status)}</span></td></tr>`).join('')}</tbody></table></details>
+      <p class="small muted" style="margin-top:12px">Pay through GCash, mobile banking or cash. Just paid? It shows here once we've recorded it. Something looks wrong? Message us.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px"><button class="btn" data-act="bal-again">Check another</button>${msgr}</div>
+    </div>`;
+  }
+  return `${head}<div class="m-body"><form class="form" data-form="balance" novalidate>
+    <p class="muted">Enter the reference number from your request and the mobile number you used.</p>
+    <div class="field"><label for="bl-ref">Reference number</label><input class="input num" id="bl-ref" name="ref" value="${esc(M.ref||'')}" placeholder="MQ-1001" autocapitalize="characters" autocomplete="off"></div>
+    <div class="field"><label for="bl-phone">Mobile number</label><input class="input num" id="bl-phone" name="phone" value="${esc(M.phone||'')}" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX"></div>
+    ${M.err?`<p class="err" role="alert">${esc(BAL_ERR[M.err]||BAL_ERR.errNet)}</p>`:''}
+    <p class="small muted">Can't find your reference number? It starts with MQ- and was shown after you sent your request. You can also message us.</p>
+    <div style="display:flex;justify-content:flex-end"><button type="submit" class="btn primary">Check balance</button></div>
+  </form></div>`;
 }
 
 /* ============================================================
@@ -1489,8 +1625,52 @@ function overview(){
     <div class="panel"><div class="p-head"><h3>New quote requests</h3><button class="btn ghost sm" data-act="tab" data-tab="quotes">All requests</button></div>
       <div class="list">${pend.length?pend.map(q=>`<div class="li"><div class="who"><b>${esc(q.name)}</b><span>${esc(q.productName)}${q.months?' · '+mos(q.months):''}</span></div><div class="right"><b class="num">${q.custom&&!q.price?'Custom request':peso(q.monthly)+'/mo'}</b><button class="btn sm primary" data-act="approve" data-id="${q.id}">Review</button></div></div>`).join(''):'<div class="li muted">No pending requests.</div>'}</div></div>
   </div>
+  ${monthPanelHTML()}
   ${todoHTML()}
   ${cardsPanelHTML()}`;
+}
+/* ---------- This month: money in and card bills ---------- */
+// Customer payments due this month vs collected, service charges received, and card bills to plan for.
+function monthStats(ym){
+  const live = S.accounts.filter(a=>!a.cancelled);
+  const due = live.flatMap(a=>a.schedule.filter(it=>it.due.slice(0,7)===ym).map(it=>({a,it})));
+  const expected = r2(due.reduce((s,x)=>s+x.it.amount,0)), paidOnDue = r2(due.reduce((s,x)=>s+Math.min(x.it.paid,x.it.amount),0));
+  const pays = S.accounts.flatMap(a=>a.schedule.flatMap(it=>(it.payments||[]).filter(p=>(p.date||'').slice(0,7)===ym).map(p=>({it,p}))));
+  const received = r2(pays.reduce((s,x)=>s+(+x.p.amount||0),0));
+  const scIn = live.filter(a=>a.dpPaid && (a.dpPaidDate||'').slice(0,7)===ym), scWait = live.filter(a=>!a.dpPaid);
+  const bought = live.filter(a=>(a.startDate||'').slice(0,7)===ym);
+  return { due, expected, paidOnDue, left:r2(expected-paidOnDue), received, other:r2(Math.max(0,received-paidOnDue)),
+    overdue: due.filter(x=>instStatus(x.it)==='Overdue').length,
+    scIn: r2(scIn.reduce((s,a)=>s+(+a.dp||0),0)), scInN: scIn.length, scWait: r2(scWait.reduce((s,a)=>s+(+a.dp||0),0)), scWaitN: scWait.length,
+    bought: r2(bought.reduce((s,a)=>s+a.price,0)), boughtN: bought.length };
+}
+function monthPanelHTML(){
+  const cur = today().slice(0,7), ym = ui.ym || cur, m = monthStats(ym), [y,mo] = ym.split('-').map(Number);
+  const label = new Date(y,mo-1,1).toLocaleDateString('en-PH',{month:'long',year:'numeric'});
+  const pct = m.expected ? Math.min(100, m.paidOnDue/m.expected*100) : 0;
+  const bills = (S.cards||[]).map(c=>{
+    const owe = r2(m.due.filter(x=>x.a.cardId===c.id).reduce((s,x)=>s+x.it.amount,0));
+    const got = r2(m.due.filter(x=>x.a.cardId===c.id).reduce((s,x)=>s+Math.min(x.it.paid,x.it.amount),0));
+    return { c, owe, got, dueDate: c.dueDay ? addMonthsDay(ym+'-01',0,c.dueDay) : '' };
+  }).filter(b=>b.owe || b.dueDate);
+  const stat = (lbl,val,sub='',cls='') => `<div class="mstat ${cls}"><span>${lbl}</span><b class="num">${val}</b>${sub?`<small>${sub}</small>`:''}</div>`;
+  return `<div class="panel mpanel" style="margin-top:18px"><div class="p-head"><h3>${ym===cur?'This month':'Month'} · ${esc(label)}</h3>
+      <span style="display:flex;gap:6px"><button class="btn sm ghost" data-act="ym" data-d="-1" aria-label="Previous month">‹</button>${ym!==cur?'<button class="btn sm ghost" data-act="ym" data-d="0">This month</button>':''}<button class="btn sm ghost" data-act="ym" data-d="1" aria-label="Next month">›</button></span></div>
+    <div class="mbody">
+      <div class="mcollect">
+        <div class="mrow"><span>Customer payments due this month</span><b class="num">${peso(m.expected)}</b></div>
+        <div class="bar" style="height:10px;margin:8px 0"><i style="width:${pct.toFixed(1)}%"></i></div>
+        <div class="mrow small"><span>Collected <b class="num">${peso(m.paidOnDue)}</b>${m.expected?` · ${pct.toFixed(0)}%`:''}</span><span>Still to collect <b class="num">${peso(m.left)}</b>${m.overdue?` · <span style="color:var(--bad)">${m.overdue} overdue</span>`:''}</span></div>
+      </div>
+      <div class="mstats">
+        ${stat('All payments received', peso(m.received), m.other?`incl. ${peso(m.other)} late or advance payments`:'Recorded in Payments')}
+        ${stat('Service charges received', peso(m.scIn), `${m.scInN} account${m.scInN===1?'':'s'} · your earnings`, 'ok')}
+        ${stat('Service charges not yet received', peso(m.scWait), m.scWaitN?`${m.scWaitN} account${m.scWaitN===1?'':'s'} (any month)`:'All received', m.scWaitN?'warn':'')}
+        ${stat('New purchases', peso(m.bought), `${m.boughtN} item${m.boughtN===1?'':'s'} bought (started this month)`)}
+      </div>
+      ${bills.length?`<div class="mbills"><p class="small" style="font-weight:700;margin-bottom:6px">Card bills</p>${bills.map(b=>`<div class="mrow small"><span><b>${esc(b.c.name)}</b> <span class="muted num">•••• ${esc(b.c.last4)}</span>${b.dueDate?` · card due ${fdate(b.dueDate)}`:''}</span><span class="num">Customers owe ${peso(b.owe)} this month · ${peso(b.got)} in</span></div>`).join('')}
+        <p class="small muted" style="margin-top:6px">Your actual card bill amount is on your card statement. This shows what customers on each card pay you this month, so you can plan.</p></div>`:''}
+    </div></div>`;
 }
 function autoEmailStatus(){
   const st = S.reminderStatus || {};
@@ -1531,14 +1711,24 @@ function prodActions(p){
     ? `<button class="btn sm danger" data-act="prod-del-confirm" data-id="${p.id}">Delete</button><button class="btn sm" data-act="prod-del-cancel">Keep</button>`
     : `<button class="btn sm" data-act="prod-edit" data-id="${p.id}">Edit</button><button class="iconbtn sm" data-act="prod-del" data-id="${p.id}" aria-label="Remove ${esc(p.name)}" title="Remove">${TRASH}</button>`;
 }
-function ownerProducts(){
+// Search and category filter for faster editing. Typing only redraws the list, so the search box keeps focus.
+function prodFiltered(){
+  const words = (ui.pq||'').toLowerCase().split(/\s+/).filter(Boolean), c = ui.pcat||'All';
+  return S.products.filter(p=>{
+    if (c==='hot' ? !p.hot : (c!=='All' && p.category!==c)) return false;
+    const hay = [p.name,p.brand,p.category,p.status].join(' ').toLowerCase();
+    return words.every(w=>hay.includes(w));
+  });
+}
+function prodListHTML(){
   const star = p => `<button class="hotbtn" data-act="hot-toggle" data-id="${p.id}" aria-pressed="${!!p.hot}" title="${p.hot?'Remove from':'Add to'} Hot picks">${p.hot?'★':'☆'}</button>`;
-  return `
-  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button><button class="btn primary" data-act="prod-new">Add product</button></div></div>
-  ${S.products.length?'':'<div class="empty">No products yet. Add one, or import your list from Excel.</div>'}
-  <div class="tablewrap ptable-wrap"${S.products.length?'':' hidden'}><table class="ptable">
+  const list = prodFiltered(), filtered = list.length!==S.products.length;
+  if (!S.products.length) return '<div class="empty">No products yet. Add one, or import your list from Excel.</div>';
+  if (!list.length) return `<div class="empty">No products match${ui.pq?` “${esc(ui.pq)}”`:''}${ui.pcat&&ui.pcat!=='All'?` in ${ui.pcat==='hot'?'Hot picks':esc(ui.pcat)}`:''}. <button class="linkbtn" data-act="pfilter-clear">Show all products</button></div>`;
+  return `${filtered?`<p class="small muted" style="margin:-4px 0 10px">Showing ${list.length} of ${S.products.length} · <button class="linkbtn small" data-act="pfilter-clear">Show all</button></p>`:''}
+  <div class="tablewrap ptable-wrap"><table class="ptable">
     <thead><tr><th>Hot</th><th>Product</th><th>Category</th><th class="r">Item price</th><th class="r">Service charge</th><th>Terms</th><th>Status</th><th class="r stick">Actions</th></tr></thead>
-    <tbody>${S.products.map(p=>`<tr class="clickable" data-act="prod-edit" data-id="${p.id}">
+    <tbody>${list.map(p=>`<tr class="clickable" data-act="prod-edit" data-id="${p.id}">
       <td>${star(p)}</td>
       <td><div class="prodcell">${thumb(p,'','mini')}<div><b>${esc(p.name)}</b><span class="sub">${esc(p.brand)}${p.sample?' · Sample':''}</span></div></div></td>
       <td>${esc(p.category)}</td>
@@ -1549,12 +1739,23 @@ function ownerProducts(){
       <td class="actions stick">${prodActions(p)}</td>
     </tr>`).join('')}</tbody>
   </table></div>
-  <div class="pcards">${S.products.map(p=>`<div class="pcard-o" data-act="prod-edit" data-id="${p.id}">
+  <div class="pcards">${list.map(p=>`<div class="pcard-o" data-act="prod-edit" data-id="${p.id}">
       ${thumb(p,'','mini')}
       <div style="min-width:0"><b>${esc(p.name)}</b><span class="meta">${esc(p.brand)} · ${esc(p.category)}${p.sample?' · Sample':''}</span></div>
       ${star(p)}
       <div class="row3"><span class="num"><b style="display:inline">${peso(p.price)}</b> <span class="meta">· ${peso(dpOf(p))} service · ${p.durations.join(', ')} mo</span></span>${pill(p.status)}<span style="display:flex;gap:6px">${prodActions(p)}</span></div>
     </div>`).join('')}</div>`;
+}
+function ownerProducts(){
+  const c = ui.pcat||'All', n = k => k==='hot' ? S.products.filter(p=>p.hot).length : k==='All' ? S.products.length : S.products.filter(p=>p.category===k).length;
+  const chips = [['All','All'], ...CATS.filter(k=>n(k)||c===k).map(k=>[k,k]), ['hot','★ Hot picks']];
+  return `
+  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button><button class="btn primary" data-act="prod-new">Add product</button></div></div>
+  ${S.products.length?`<div class="ptools">
+    <label class="topsearch psearch">${I.search}<input id="prod-search" type="search" placeholder="Search by name, brand or category" value="${esc(ui.pq||'')}" aria-label="Search products" autocomplete="off" enterkeyhint="search"></label>
+    <div class="chips" role="group" aria-label="Filter by category">${chips.map(([k,l])=>`<button class="chip" data-act="pcat" data-cat="${esc(k)}" aria-pressed="${c===k}">${esc(l)}<span class="ct">${n(k)}</span></button>`).join('')}</div>
+  </div>`:''}
+  <div id="plist">${prodListHTML()}</div>`;
 }
 function productFormHTML(){
   const p = M.id ? S.products.find(x=>x.id===M.id) : {name:'',brand:'',category:'Smartphones',description:'',price:'',imageUrl:'',dpType:'fixed',dpValue:'',durations:[3,6,9,12],status:'Available',sourceUrl:''};
@@ -2244,7 +2445,7 @@ function accountHTML(){
   const pays = a.schedule.flatMap(it=>(it.payments||[]).map(p=>({a,it,p}))).sort((x,y)=>y.p.date.localeCompare(x.p.date)||y.p.at-x.p.at);
   const others = S.accounts.filter(x=>x.id!==a.id && ckey(x.customer.contact)===key).length;
   return `<div class="m-head"><div><p class="eyebrow">${esc(a.quoteId)} · ${a.sample?'Sample account':'Account'}</p><h2 style="font-size:22px;margin-top:4px">${esc(a.customer.name)} · ${esc(a.productName)}</h2>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${pill(st)}<button class="btn sm" data-act="open-cust" data-id="${esc(key)}">View customer${others?` · ${others} other purchase${others>1?'s':''}`:''}</button>${a.cancelled?'':`<button class="btn sm primary" data-act="edit-acct" data-id="${a.id}">Edit account</button>`}</div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${pill(st)}<button class="btn sm" data-act="open-cust" data-id="${esc(key)}">View customer${others?` · ${others} other purchase${others>1?'s':''}`:''}</button>${a.cancelled?'':`<button class="btn sm primary" data-act="edit-acct" data-id="${a.id}">Edit account</button>`}<button class="btn sm" data-act="agreement" data-id="${a.id}">Agreement</button></div>
       <p class="small muted" style="margin-top:6px">${esc(remSummary(a))}</p></div>
     <button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
   <div class="m-body">
@@ -2279,6 +2480,71 @@ function accountHTML(){
       <span style="display:flex;gap:8px">${M.fromCust?`<button class="btn" data-act="back-cust">Back to customer</button>`:''}<button class="btn" data-act="close">Done</button></span>
     </div>
   </div>`;
+}
+
+/* ---------- Customer agreement (one per account) ---------- */
+// A printable summary of the purchase and its terms for the customer to sign or keep.
+const balanceUrl = () => location.origin + location.pathname + '#balance';
+function agreementData(a){
+  const s = S.settings, pl = plan(a.price, a.months), si = shopInfo();
+  const terms = [
+    `Pay each monthly amount on or before its due date. Your due day is the ${a.dueDay}${ord(a.dueDay)} of each month.`,
+    'Pay through GCash, mobile banking or cash, and keep your proof of payment.',
+    penaltyText() ? `Late payments: ${penaltyText()}` : '',
+    'The service charge is paid upfront. It is separate from the item price and does not reduce the monthly payments.',
+    'The item is brand new with store warranty.',
+    'Any change to the due dates or amounts must be agreed by both of us in writing (a Messenger message is fine).',
+    `Check your balance anytime at ${balanceUrl()} using your reference number ${a.quoteId} and your mobile number.`,
+    `Your personal information is handled according to the ${s.shopName||'AbotVida'} privacy notice and the Data Privacy Act of 2012.`,
+  ].filter(Boolean);
+  const shopLines = [si.fbPage?'Facebook: '+si.fbPage:'', msgrHref() && !/^https?:\/\/m\.me\/?$/i.test(msgrHref()) ? 'Messenger: '+msgrHref() : '', si.location||'', si.dtiNo?'DTI Reg. No. '+si.dtiNo:''].filter(Boolean);
+  return { s, pl, terms, shopLines, total: r2((+a.dp||0)+a.price) };
+}
+function agreementHTML(){
+  const a = S.accounts.find(x=>x.id===M.id); if (!a) return '';
+  const {s, pl, terms, shopLines, total} = agreementData(a), c = a.customer||{};
+  const row = (k,v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
+  return `<div class="m-head no-print"><div><p class="eyebrow">${esc(a.quoteId)} · Agreement</p><h2 style="font-size:22px;margin-top:4px">Customer agreement</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
+  <div class="m-body">
+    <div class="callout no-print" style="border-style:solid">${I.info}<div>Print it for the customer to sign, or save it as a PDF and send it on Messenger. Have a lawyer check this wording once before you start using it.</div></div>
+    <div class="agreement" id="agreement-doc">
+      <div class="ag-top"><span class="flock">${logoMark()}${wordmark()}</span><div class="ag-ref"><b>Installment agreement</b><span>Ref. ${esc(a.quoteId)}</span><span>Prepared ${fdate(today())}</span></div></div>
+      ${shopLines.length?`<p class="ag-small">${shopLines.map(esc).join(' · ')}</p>`:''}
+      <div class="ag-cols">
+        <table class="ag-t"><caption>Customer</caption>${row('Name',esc(c.name))}${row('Mobile',esc(c.contact))}${c.email?row('Email',esc(c.email)):''}</table>
+        <table class="ag-t"><caption>Purchase</caption>${row('Item',esc(a.productName))}${row('Start date',fdate(a.startDate))}${row('Bought by',esc(s.shopName||'AbotVida'))}</table>
+      </div>
+      <table class="ag-t ag-money"><caption>Payment terms</caption>
+        ${row('Item price', peso(a.price))}
+        ${row('Service charge (paid upfront)', `${peso(a.dp)} <span class="ag-note">${a.dpPaid?'Received '+fdate(a.dpPaidDate):'To be paid upfront'} · not deducted from the item price</span>`)}
+        ${row('Term', mos(a.months))}
+        ${row(a.months===1?'Amount due after 1 month':'Monthly payment', a.months===1?peso(a.price):`${peso(pl.monthly)} × ${pl.last!==pl.monthly?a.months-1:a.months}${pl.last!==pl.monthly?` · last month ${peso(pl.last)}`:''}`)}
+        ${row('Total you pay', `<b>${peso(total)}</b> <span class="ag-note">service charge + item price</span>`)}
+      </table>
+      <table class="ag-sched"><caption>Payment schedule</caption><thead><tr><th>#</th><th>Due date</th><th class="r">Amount</th></tr></thead>
+        <tbody>${a.schedule.map(it=>`<tr><td>${it.n}</td><td>${fdate(it.due)}</td><td class="r">${peso(it.amount)}</td></tr>`).join('')}</tbody>
+        <tfoot><tr><td colspan="2">Total of monthly payments</td><td class="r">${peso(a.price)}</td></tr></tfoot></table>
+      <div class="ag-terms"><b>Terms</b><ol>${terms.map(t=>`<li>${esc(t)}</li>`).join('')}</ol></div>
+      <p class="ag-small">By signing below, the customer confirms they have read and agree to the payment terms and schedule above.</p>
+      <div class="ag-sign">
+        <div><span class="ag-line"></span><b>${esc(c.name)}</b><span>Customer · signature and date</span></div>
+        <div><span class="ag-line"></span><b>${esc(s.shopName||'AbotVida')}</b><span>Signature and date</span></div>
+      </div>
+    </div>
+    <div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px">
+      <button class="btn" data-act="open-acct" data-id="${a.id}">Back to account</button>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="ag-copy" data-id="${a.id}">Copy as text</button><button class="btn primary" data-act="ag-print">Print or save as PDF</button></span>
+    </div>
+  </div>`;
+}
+function agreementText(a){
+  const {s, pl, terms, total} = agreementData(a), c = a.customer||{};
+  return [`${s.shopName||'AbotVida'} installment agreement`, `Ref. ${a.quoteId} · Prepared ${fdate(today())}`, '',
+    `Customer: ${c.name} · ${c.contact}${c.email?' · '+c.email:''}`, `Item: ${a.productName}`, `Start date: ${fdate(a.startDate)}`, '',
+    `Item price: ${peso(a.price)}`, `Service charge (paid upfront, not deducted from the item price): ${peso(a.dp)}${a.dpPaid?' · received '+fdate(a.dpPaidDate):''}`,
+    `Term: ${mos(a.months)}`, a.months===1?`Amount due after 1 month: ${peso(a.price)}`:`Monthly payment: ${peso(pl.monthly)}${pl.last!==pl.monthly?` (last month ${peso(pl.last)})`:''}`,
+    `Total you pay: ${peso(total)}`, '', 'Payment schedule:', ...a.schedule.map(it=>`${it.n}. ${fdate(it.due)} · ${peso(it.amount)}`), '',
+    'Terms:', ...terms.map((t,i)=>`${i+1}. ${t}`)].join('\n');
 }
 
 /* ---------- Payments ---------- */
@@ -2767,12 +3033,12 @@ function initCarousels(){
 }
 function renderModal(){
   if (!M){ modalRoot.innerHTML=''; return; }
-  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : '';
-  const narrow = ['approve','pay','newpurchase','editacct','card','review','custom','privacy'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
+  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='balance'?balanceHTML() : '';
+  const narrow = ['approve','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
   const wasOpen = !!modalRoot.firstChild;
   const pf = modalRoot.querySelector('form[data-form]');
   const keep = (pf && M.err) ? [pf.dataset.form, [...pf.elements].filter(el=>el.name && !['file','submit','button'].includes(el.type)).map(el=>[el.name, el.type, el.value, el.checked])] : null;
-  const sheet = ['offer','custom','review'].includes(M.kind);
+  const sheet = ['offer','custom','review','balance'].includes(M.kind);
   modalRoot.innerHTML = `<div class="overlay${sheet?' sheetmode':''}${wasOpen?'':' enter'}" data-act="backdrop"><div class="modal ${narrow?'narrow':''}${sheet?' sheet':''}" role="dialog" aria-modal="true" tabindex="-1">${html}</div></div>`;
   if (keep){ const nf = modalRoot.querySelector(`form[data-form="${keep[0]}"]`); if (nf) keep[1].forEach(([n,ty,v,c])=>nf.querySelectorAll(`[name="${CSS.escape(n)}"]`).forEach(el=>{ if (ty==='checkbox'||ty==='radio'){ if (el.value===v) el.checked=c; } else if (el.type===ty) el.value=v; })); }
   if (modalRoot.querySelector('#pf-photos')) renderPfPhotos();
@@ -2782,7 +3048,7 @@ function renderModal(){
   if (first) first.focus({preventScroll:true});
   modalRoot.querySelector('.overlay').scrollTop = 0; const md = modalRoot.querySelector('.modal'); if (md) md.scrollTop = 0;
 }
-function closeModal(){ M=null; modalRoot.innerHTML=''; document.body.style.overflow=''; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); }
+function closeModal(){ if (M && M.kind==='balance' && location.hash==='#balance') history.replaceState(null,'',location.pathname+location.search); M=null; modalRoot.innerHTML=''; document.body.style.overflow=''; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); }
 
 function route(){
   const h = location.hash.slice(1);
@@ -2794,6 +3060,7 @@ function route(){
   if (!API_URL && view==='owner'){ try{ localStorage.setItem(OWNER_DEV,'1'); }catch(e){} }
   closeModal(); render();
   window.scrollTo({top:(view==='shop' && prev==='product') ? ui.homeY : 0, behavior:'instant'});
+  if (h==='balance'){ M={kind:'balance',err:''}; renderModal(); }
 }
 window.addEventListener('hashchange', route);
 
@@ -2818,6 +3085,8 @@ document.addEventListener('click', e=>{
       document.documentElement.setAttribute('data-shop-theme', ui.theme);
       document.querySelectorAll('[data-act="theme"]').forEach(b=>{ b.innerHTML = ui.theme==='dark'?SUN:MOON; b.setAttribute('aria-label', themeLabel()); b.title = themeLabel(); }); break;
     case 'req-any': M={kind:'custom',step:'form',err:''}; renderModal(); break;
+    case 'balance-open': M={kind:'balance',err:''}; renderModal(); break;
+    case 'bal-again': M={kind:'balance',err:'',ref:'',phone:''}; renderModal(); break;
     case 'privacy-open': M={kind:'privacy'}; renderModal(); break;
     case 'owner-tap': ownerTap(); break;
     case 'review-open': M={kind:'review',step:'form',rating:0,err:''}; renderModal(); break;
@@ -2841,6 +3110,12 @@ document.addEventListener('click', e=>{
     case 'gal-del-no': ui.pendingGalDel=null; render(); break;
     case 'gal-del-yes': S.gallery=S.gallery.filter(g=>g.id!==id); ui.pendingGalDel=null; save(); render(); toast('Photo removed'); break;
     case 'more': { const n=(ui.shown||pageSize())+pageSize(); ui.shown=n; updateCatalog(); document.querySelectorAll('#catalog .pcard')[n-pageSize()]?.focus({preventScroll:true}); break; }
+    case 'ym': { const d=+el.dataset.d, cur=today().slice(0,7); ui.ym = d===0 ? cur : addMonths((ui.ym||cur)+'-01', d).slice(0,7); render(); break; }
+    case 'agreement': M={kind:'agreement',id,fromCust:M?.fromCust}; renderModal(); break;
+    case 'ag-copy': copy(agreementText(S.accounts.find(x=>x.id===id))); break;
+    case 'ag-print': window.print(); break;
+    case 'pcat': ui.pcat=el.dataset.cat; render(); break;
+    case 'pfilter-clear': ui.pq=''; ui.pcat='All'; render(); break;
     case 'hot-toggle': { const p=S.products.find(x=>x.id===id); p.hot=!p.hot; save(); render(); toast(p.hot?'Added to Hot picks':'Removed from Hot picks'); break; }
     case 'cat': ui.shown=0; ui.cat = (ui.cat===el.dataset.cat && el.dataset.cat!=='All') ? 'All' : el.dataset.cat; updateCatalog(); document.getElementById('catalogwrap')?.scrollIntoView({behavior:'smooth', block:'start'}); break;
     case 'offer': openOffer(id,'terms'); break;
@@ -2964,6 +3239,7 @@ document.addEventListener('change', e=>{
 });
 document.addEventListener('input', e=>{
   if (e.target.id==='pf-img'){ renderPfPhotos(); return; }
+  if (e.target.id==='prod-search'){ ui.pq = e.target.value; const l=document.getElementById('plist'); if (l) l.innerHTML = prodListHTML(); return; }
   if (e.target.id==='shop-search'){
     ui.q = e.target.value; ui.shown = 0; updateCatalog();
   }
@@ -2981,6 +3257,7 @@ document.addEventListener('submit', e=>{
   else if (k==='card') submitCard(form);
   else if (k==='review') submitReview(form);
   else if (k==='custom') submitCustom(form);
+  else if (k==='balance') submitBalance(form);
   else if (k==='login') ownerLogin(form);
   else if (k==='pwchange') changeOwnerPassword(form);
   else if (k==='note'){
