@@ -70,6 +70,7 @@ function plan(price, months) {
   return { monthly: m / 100, last: last / 100 };
 }
 const peso = n => { n = r2(n); const s = Math.abs(n % 1) > 0.001 ? n.toFixed(2) : String(Math.round(n)); return '₱' + s.replace(/\B(?=(\d{3})+(?!\d))/g, ','); };
+const fullName = p => { const b = String(p.brand || '').trim(), n = String(p.name || '').trim(); return b && !n.toLowerCase().startsWith(b.toLowerCase()) ? b + ' ' + n : n; };
 const isLarge = p => p.size ? p.size === 'large' : ['TVs', 'Appliances', 'Furniture'].includes(p.category);
 
 const DEFAULT_FAQ = [
@@ -105,7 +106,7 @@ function shopContext(c) {
       const pl = plan(+p.price, m);
       return m === 1 ? `1 month: pay ${peso(p.price)} after 1 month` : `${m} months: ${peso(pl.monthly)}/month${pl.last !== pl.monthly ? ` (last month ${peso(pl.last)})` : ''}`;
     }).join('; ');
-    return `[[p:${p.id}]] ${p.brand ? p.brand + ' ' : ''}${p.name} | ${p.category} | ${p.status || 'Available'}${p.status === 'Out of stock' ? ' (cannot be requested now)' : ''} | ${isLarge(p) ? 'large item' : 'small item'}`
+    return `[[p:${p.id}]] ${fullName(p)} | ${p.category} | ${p.status || 'Available'}${p.status === 'Out of stock' ? ' (cannot be requested now)' : ''} | ${isLarge(p) ? 'large item' : 'small item'}`
       + ` | item price ${peso(p.price)} | service charge ${peso(sc)} | total ${peso(sc + +p.price)} | terms: ${terms}`
       + (p.description ? ` | ${String(p.description).slice(0, 160)}` : '');
   }).join('\n');
@@ -179,7 +180,7 @@ async function chat(request, env) {
   if (!env.GEMINI_API_KEY) return json({ ok: false, error: 'off' });
   const c = await catalog(), x = shopContext(c);
   const vid = String(body.productId || '').slice(0, 60), vp = vid && x.list.find(p => p && p.id === vid);
-  if (vp) x.viewing = `[[p:${vp.id}]] (${vp.brand ? vp.brand + ' ' : ''}${vp.name})`;
+  if (vp) x.viewing = `[[p:${vp.id}]] (${fullName(vp)})`;
   if (!x.chatOn) return json({ ok: false, error: 'off' });
   const ip = request.headers.get('cf-connecting-ip') || 'x';
   if (!allowed(ip, env)) return json({ ok: false, error: 'limit' });

@@ -583,7 +583,7 @@ section.row{padding-block:18px 4px}
 .ptitle{flex:1;min-width:0;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .product{padding-bottom:20px}
 .pgrid2{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:28px;padding-block:20px}
-@media (max-width:780px){.pgrid2{grid-template-columns:1fr;gap:0;padding:0}.pgrid2 .gal{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)))}}
+@media (max-width:780px){.pgrid2{grid-template-columns:1fr;gap:0;padding:0}.pgrid2 .gal{margin-inline:0}}
 .gal{position:relative}
 .gtrack{display:grid;grid-auto-flow:column;grid-auto-columns:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;border-radius:16px;background:var(--bg)}
 .gtrack::-webkit-scrollbar{display:none}
@@ -593,7 +593,7 @@ section.row{padding-block:18px 4px}
 .gslide img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
 .gsample{position:absolute;top:12px;left:12px}
 .pinfo{display:grid;gap:12px;align-content:start;min-width:0}
-@media (max-width:780px){.pinfo{background:var(--bg);padding:16px;margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
+@media (max-width:780px){.pinfo{background:var(--bg);padding:16px;margin-inline:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
 .pname-lg{font-family:var(--f-body);font-size:20px;font-weight:700;line-height:1.3}
 .pricebox{background:var(--accent-soft);border-radius:14px;padding:14px 16px;display:grid;gap:4px}
 .pmo-lg{font-family:var(--f-display);font-weight:800;font-size:30px;color:var(--accent-strong);line-height:1.1}
@@ -838,7 +838,8 @@ function quoteFor(p, months){
   const pl = plan(p.price, months), dp = dpOf(p);
   return { months, dp, monthly: pl.monthly, last: pl.last, total: r2(dp + p.price) };
 }
-const fullName = p => p.brand ? p.brand+' '+p.name : p.name;
+// Brand + name, without repeating the brand when the name already starts with it ("HONOR X9d", not "HONOR HONOR X9d").
+const fullName = p => { const b = String(p.brand||'').trim(), n = String(p.name||'').trim(); return b && !n.toLowerCase().startsWith(b.toLowerCase()) ? b+' '+n : n; };
 
 function buildSchedule(price, months, firstDue){
   const pl = plan(price, months), day = parse(firstDue).getDate(), out = [];
@@ -1238,7 +1239,7 @@ function cardHTML(p){
   return `<a class="pcard${out?' is-out':''}" href="#item-${p.id}" data-act="open-item" data-id="${p.id}">
     <div class="pimg">${ph(p.category)}${img?`<img src="${esc(img)}" alt="" loading="lazy" onerror="this.remove()">`:''}${out?`<span class="outlbl">${t('status')['Out of stock']}</span>`:''}</div>
     <div class="pbody">
-      <span class="pname">${esc(p.brand?p.brand+' ':'')}${esc(p.name)}</span>
+      <span class="pname">${esc(fullName(p))}</span>
       ${tags?`<div class="tags">${tags}</div>`:''}
       <div class="pmo num">${peso(o.monthly)}<small>${longest===1?' '+t('in1'):t('perMo')}</small></div>
       <div class="pmeta num">${longest===1?'':t('moShort')(longest)+' · '}${t('totalShort')} ${peso(o.total)}</div>
@@ -1372,7 +1373,7 @@ function renderProduct(){
           <span><b>${t('termsLbl')}</b><span class="muted">${p.durations.map(d=>t('moShort')(d)).join(' · ')}</span></span>${IC.chev}</button>
         <div class="pactions desk">${actions}</div>
         ${infoBoxHTML(p)}
-        ${p.description?`<div class="pdesc"><h3>${t('details')}</h3><p>${esc(p.description)}</p>${p.sourceUrl?`<p><a href="${esc(linkify(p.sourceUrl))}" target="_blank" rel="noopener">${t('refLink')}</a></p>`:''}</div>`:''}
+        ${p.description?`<div class="pdesc"><h3>${t('details')}</h3><p>${esc(p.description)}</p></div>`:''}
       </div>
     </div>
     ${related.length?`<section class="block row"><div class="wrap"><div class="sec-head"><h2>${t('related')}</h2></div><div class="hrow" role="list">${related.map(x=>`<div role="listitem">${cardHTML(x)}</div>`).join('')}</div></div></section>`:''}
@@ -2199,6 +2200,10 @@ function ownerReviews(){
   const pend = R.filter(r=>r.status==='Pending').sort((a,b)=>b.at-a.at), shown = R.filter(r=>r.status==='Approved').sort((a,b)=>b.at-a.at), hidden = R.filter(r=>r.status==='Hidden');
   const row = (r, acts) => `<div class="rem"><div class="top"><div>${stars(r.rating)} <b style="margin-left:6px">${esc(r.name)}</b>${r.item?` <span class="muted small">· ${esc(r.item)}</span>`:''}<p class="small muted">${fdt(r.at)}</p></div></div><div class="msg" style="user-select:text">${esc(r.text)}</div><div class="acts">${acts}</div></div>`;
   const BN = S.banners||[];
+  // Warn about banners that lead nowhere or to an empty list.
+  const banWarn = b => { if (b.visible===false) return '';
+    const msg = !b.action ? 'Tapping this banner does nothing. Choose what it opens.' : b.action.startsWith('cat:') && !S.products.some(p=>p.category===b.action.slice(4)) ? `There are no ${b.action.slice(4)} items yet, so this banner opens an empty list.` : b.action==='hot' && !S.products.some(p=>p.hot) ? 'No Hot picks yet, so this banner opens an empty list.' : '';
+    return msg ? `<p class="warnline small" style="flex-basis:100%">${esc(msg)}</p>` : ''; };
   const actOpts = [['','No link'],['req-any','Open "Request any item"'],['hot','Show Hot picks'],...CATS.map(c=>['cat:'+c,'Show '+c])];
   return `<div class="o-head"><div><h2>Shop page</h2><p class="muted small">What customers see: banners, Good to know, questions, month choices, customer photos and reviews. Changes save as you type.</p></div></div>
   ${shopTextEditorsHTML()}
@@ -2211,6 +2216,7 @@ function ownerReviews(){
         <div class="field"><label for="bs-${b.id}">Subtitle</label><input class="input" id="bs-${b.id}" data-ban="${b.id}" data-field="subEn" value="${esc(b.subEn||'')}"></div>
       </div>
       <div class="acts">
+        ${banWarn(b)}
         <select class="input" style="width:auto" id="ba-${b.id}" data-ban="${b.id}" data-field="action" aria-label="When tapped">${actOpts.map(([v,l])=>`<option value="${v}" ${b.action===v?'selected':''}>${esc(l)}</option>`).join('')}</select>
         <label class="btn sm" for="bi-${b.id}">${b.img?'Replace image':'Upload image'}</label><input type="file" accept="image/*" id="bi-${b.id}" data-banimg="${b.id}" hidden>
         ${b.img?`<button class="btn sm ghost" data-act="ban-noimg" data-id="${b.id}">Use text instead</button>`:''}
@@ -3282,7 +3288,7 @@ document.addEventListener('change', e=>{
   }
   if (tg.dataset && tg.dataset.pfphotos && tg.files && tg.files.length){ const fl=[...tg.files]; tg.value=''; addProductPhotos(fl); return; }
   if (tg.id==='shop-sort'){ ui.sort=tg.value; ui.shown=0; updateCatalog(); return; }
-  if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); toast('Banner saved'); return; }
+  if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); if (tg.dataset.field==='action' || tg.type==='checkbox') render(); toast('Banner saved'); return; }
   if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); compressImage(tg.files[0],1400,0.8).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
   if (tg.dataset && tg.dataset.gtk !== undefined){ const L=editList('goodToKnow', DEFAULT_GTK), g=L[+tg.dataset.gtk]; if (g){ g[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
   if (tg.dataset && tg.dataset.faq !== undefined){ const L=editList('faq', DEFAULT_FAQ), x=L[+tg.dataset.faq]; if (x){ x[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }

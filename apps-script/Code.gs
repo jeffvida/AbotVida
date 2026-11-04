@@ -150,7 +150,7 @@ function plan(price, months) {
   if (last <= 0) { m = Math.round(c / months); last = c - m * (months - 1); }
   return { monthly: m / 100, last: last / 100 };
 }
-function fullName(p) { return p.brand ? p.brand + ' ' + p.name : p.name; }
+function fullName(p) { const b = String(p.brand || '').trim(), n = String(p.name || '').trim(); return b && n.toLowerCase().indexOf(b.toLowerCase()) !== 0 ? b + ' ' + n : n; }
 function digits(s) { let d = String(s || '').replace(/\D/g, ''); if (d.indexOf('63') === 0 && d.length === 12) d = '0' + d.slice(2); return d; }
 
 /* ============================== Public ============================== */
@@ -161,7 +161,7 @@ function catalog() {
   readColl('accounts').forEach(a => { if (!a.cancelled && !a.sample && a.productId) sold[a.productId] = (sold[a.productId] || 0) + 1; });
   return {
     ok: true,
-    products: readColl('products'),
+    products: readColl('products').map(p => { const o = Object.assign({}, p); delete o.sourceUrl; return o; }),   // where you buy stays private
     banners: readColl('banners').filter(b => b.visible !== false),
     gallery: readColl('gallery').filter(g => g.visible !== false && g.img),
     reviews: readColl('reviews').filter(r => r.status === 'Approved').map(r => ({ id: r.id, name: r.name, item: r.item, rating: r.rating, text: r.text, at: r.at, status: r.status })),
