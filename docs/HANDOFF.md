@@ -35,7 +35,7 @@
   - `apps-script/`: Code.gs and SETUP.md
   - `templates/`: product import Excel template
   - `wrangler.jsonc`
-- **Chat assistant server:** `worker/index.js` (Cloudflare Worker, runs only for `/api/*`; everything else is served from `site/`). Needs the Cloudflare secret `GEMINI_API_KEY`. Optional variables: `GEMINI_MODEL`, `CHAT_DAILY_LIMIT`.
+- **Chat assistant server:** `worker/index.js` (Cloudflare Worker, runs only for `/api/*`; everything else is served from `site/`). Needs the Cloudflare secret `GEMINI_API_KEY`. Optional variables: `GEMINI_MODEL`, `CHAT_DAILY_LIMIT`. If a Gemini model is busy (503), over its free limit (429) or unavailable, the next one is tried: gemini-flash-latest → gemini-2.5-flash → gemini-flash-lite-latest → gemini-2.5-flash-lite. Error replies include a short `why` for troubleshooting. Branch `preview/diag` runs a live check of the chat from GitHub when pushed.
 - **Deploys:** GitHub Actions (`.github/workflows/deploy.yml`) publishes `site/` to Cloudflare Workers on every push to `main`. It uses the repository secret `CLOUDFLARE_API_TOKEN` and Cloudflare account ID 14f2c4e88d58b483414ab156bbbacfcd.
   - Cloudflare's own Git build kept timing out, so the owner was asked to disconnect it.
   - workers.dev Production is on and Preview URLs are off. Zero Trust/Access is not used.
