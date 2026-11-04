@@ -121,7 +121,7 @@
 
 ## Owner to-do now
 1. **Add the Gemini key in Cloudflare:** Workers & Pages → abotvida → Settings → Variables and Secrets → Add → Type: Secret, Name: `GEMINI_API_KEY` → Deploy. The chat bubble stays hidden until this is done.
-2. **Paste the latest Code.gs** (Nov 4 night version: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
+2. **Paste the latest Code.gs** (Nov 4 night version: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive, source links removed from the public catalog, no doubled brand in request names) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
    - Until this is done, Check my balance on the live shop shows a connection error, and the Chat assistant switch and chat logo don't reach customers.
 3. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
 4. In the dashboard Settings:
@@ -131,6 +131,15 @@
    - tick Automatic email reminders
 5. Add real products and photos. Product import from Abenson is via ChatGPT using the template; leave Image URL blank; check prices by hand.
 6. Disconnect the Cloudflare Git build (abotvida → Settings → Build) and delete the old sparkling-fire-ae80 project.
+
+## Ops review (Nov 4 night): owner to-do in the dashboard
+- One service charge rule for all items (e.g. 15%, min ₱1,000, or rising with term). Fixed ₱5,000 is 54% on the Galaxy A16, 40% on Tab A11, 37% on MatePad SE.
+- Duplicates: iPhone 17 256GB (Black ₱64,990 + ₱5,000 vs Lavender ₱73,490 + 15%); HONOR X9d Reddish Brown listed twice at different prices.
+- Penalty amount, Facebook Page, location, hours, delivery areas, DTI, privacy email; first-purchase limit.
+- Photos for all 44 items; plain names for appliances (model codes only now); move HP 15, ASUS Vivobook, MacBook Neo to Laptops.
+- Minimum monthly (e.g. ₱500) and 18–24 months only above ~₱20,000; check cards offer 0% for 18/24 months.
+- Banners: link "Request Any Item"; hide Groceries banner until groceries exist; give "Good Day Shoppers!" a real message; pick 4–6 Hot picks.
+- Done in code: no doubled brand names, Abenson source links private (also stripped from the public catalog once Code.gs is pasted), phone product page overflow fixed, banner warnings in Shop page.
 
 ## Decisions and preferences
 - Keep the design; changes small; show a preview before pushing live.
