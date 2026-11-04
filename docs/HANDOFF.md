@@ -72,7 +72,7 @@
   - The Google Sheet also checks the privacy consent and records when the customer agreed.
 - Done screen: reference number (MQ-…), copy-ready details, Continue on Messenger.
 - Footer: Facebook Page, location, hours and DTI number (each hidden until filled in Settings), Check my balance, Write a review, Privacy notice.
-- **AbotVida Assistant chat bubble** (right side; above the bottom menu / Request bar on phones): welcome note after 3 s, once per visit; opens only when tapped; quick questions; product names link to the product; Messenger hand-off. Replies in the customer's language via Gemini. Monthly amounts are calculated in the Worker, not by the AI. Rules: always "service charge", no approval promises, no pressure, never asks for IDs/cards/addresses, shop topics only. Limits: 20 messages per visitor per hour and 600 per day (in memory, best effort) plus Gemini's own free-tier limits. Hidden until the Gemini key is set, on the owner dashboard, and while a form is open. Privacy notice mentions Gemini.
+- **AbotVida Assistant chat bubble** (right side; above the bottom menu / Request bar on phones): welcome note after 3 s, once per visit; opens only when tapped; quick questions; product names link to the product; Messenger hand-off. Replies in the customer's language via Gemini. Monthly amounts are calculated in the Worker, not by the AI. Rules: always "service charge", no approval promises, no pressure, never asks for IDs/cards/addresses, shop topics only. Limits: 20 messages per visitor per hour and 600 per day (in memory, best effort) plus Gemini's own free-tier limits. Knows which product the customer is viewing (quick buttons change on product pages); budget finder from a code-built BUDGET GUIDE; reply tags [[req:ID:MONTHS]] and [[any:NAME]] become buttons that open the request form pre-filled (in-stock items and offered terms only). If all models are busy it waits 1.5 s and tries once more. Hidden until the Gemini key is set, on the owner dashboard, and while a form is open. Privacy notice mentions Gemini.
 - **Check my balance** (footer link, or the `#balance` address): the customer enters only their mobile number and sees every account on it with payments left (balance, next payment, schedule) plus requests still being reviewed. First name only; no contact details, notes or card. Limited to 20 lookups per number and 600 in total per hour. The owner accepted the trade-off that anyone who knows a number can see that customer's balance; a second check (e.g. first name) can be added later.
 - Excel reader loads only when the owner imports a file, so the shop stays fast on mobile data.
 
@@ -142,13 +142,14 @@
 - Product photos: the owner's own or permitted sources; don't hotlink Abenson images.
 
 ## Next steps (suggested)
-Done and live Nov 4: customer agreement, Check my balance (by mobile number), This month panel, Products search and filter, AbotVida Assistant chat (Gemini) with editable chat logo.
+Done and live Nov 4: customer agreement, Check my balance (by mobile number), This month panel, Products search and filter, AbotVida Assistant chat (Gemini) with editable chat logo, product-aware quick buttons, budget finder and in-chat Request buttons.
 
 On hold until the owner asks:
-1. "About AbotVida" section and a link to Facebook Page reviews, for trust.
-2. Custom domain (abotvida.com / .ph). When connected, update the og:url and og:image addresses in index.html.
-3. Optional: track penalties in balances; per-card limits; a second check on Check my balance.
-4. Business:
+1. Chat questions log in the owner dashboard (anonymous; flags unanswered questions; needs a privacy-notice line). Then: outside-hours message, gentle product-page chat note.
+2. "About AbotVida" section and a link to Facebook Page reviews, for trust.
+3. Custom domain (abotvida.com / .ph). When connected, update the og:url and og:image addresses in index.html.
+4. Optional: track penalties in balances; per-card limits; a second check on Check my balance.
+5. Business:
    - DTI BNRS, BIR, IPOPHL trademark search (name and AV mark)
    - claim social handles and the domain
    - check with the SEC or a lawyer about lending/financing registration and requiring ATM cards
