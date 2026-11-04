@@ -354,6 +354,10 @@ body.is-shop .step p{font-size:15px}
 .shopbar .wrap{gap:10px}
 .shopbar .logo{margin-right:0;flex:none}
 .balcard{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:var(--raised)}
+.baltotal{display:flex;flex-direction:column;gap:2px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface)}
+.baltotal span:first-child{font-size:12px;color:var(--muted)}
+.baltotal b{font-family:var(--f-display);font-size:26px}
+.balreq{display:grid;gap:6px;margin-top:12px;padding:12px 14px;border:1px dashed var(--line);border-radius:12px}
 .bal-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
 .bal-top b{display:block}
 .bal-amt{display:flex;flex-direction:column;margin:12px 0 8px}
@@ -1377,7 +1381,7 @@ function offerHTML(){
         <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
       </div>
       <p class="small muted" style="margin-top:12px">${t('tip')}</p>
-      <p class="small muted" style="margin-top:10px">Keep your reference number. Once approved, use it to <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime.</p>
+      <p class="small muted" style="margin-top:10px">Once approved, <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime with your mobile number.</p>
     </div></div>`;
   }
 
@@ -1448,7 +1452,7 @@ function customHTML(){
       <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">
         ${m?`<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>${t('cont')}</span></a>`:''}
         <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
-      </div><p class="small muted" style="margin-top:10px">Keep your reference number. Once approved, use it to <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime.</p></div></div>`;
+      </div><p class="small muted" style="margin-top:10px">Once approved, <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime with your mobile number.</p></div></div>`;
   }
   return `${head}<div class="m-body"><form class="form" data-form="custom" novalidate>
     <p class="muted">${t('reqSub')}</p>
@@ -1503,69 +1507,71 @@ function submitQuote(form){
 }
 
 /* ---------- Check my balance (customer) ---------- */
-// The customer enters their reference number and mobile number. On the live shop the Google Sheet checks both
-// and sends back only this account's payment details. In the preview it looks up the sample data instead.
-const BAL_ERR = { errBalReq:'Enter your reference number (for example MQ-1001) and the mobile number you used.', errBalNone:'We couldn\'t find an account with that reference number and mobile number. Check both and try again, or message us.', errBusy:'Too many tries. Please wait an hour and try again, or message us.', errNet:'We couldn\'t connect. Check your internet and try again.' };
-const normRef = v => { const d = String(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'').replace(/^MQ/,''); return d ? 'MQ-'+d : ''; };
-function localBalance(ref, phone){
-  const q = S.quotes.find(x=>String(x.id).toUpperCase()===ref);
-  if (!q || String(q.contact).replace(/\D/g,'').slice(-10)!==phone) return { ok:false, error:'errBalNone' };
-  const first = String(q.name||'').trim().split(/\s+/)[0]||'', a = S.accounts.find(x=>x.quoteId===q.id);
-  if (!a) return { ok:true, kind:'request', firstName:first, item:q.productName, months:q.months||0, status:q.status };
-  const sched = a.schedule.map(it=>({ n:it.n, due:it.due, amount:it.amount, paid:r2(it.paid), status:instStatus(it) })), nx = sched.find(i=>i.status!=='Paid');
-  return { ok:true, kind:'account', firstName:first, ref:q.id, item:a.productName, price:a.price, months:a.months, monthly:a.monthly, dp:a.dp, dpPaid:!!a.dpPaid,
-    paid:acctPaid(a), balance:acctBalance(a), status:acctStatus(a), next: nx ? { n:nx.n, due:nx.due, amount:r2(nx.amount-nx.paid), status:nx.status } : null, schedule:sched };
+// The customer enters their mobile number. On the live shop the Google Sheet finds every account on that number
+// that still has payments left and sends back only those payment details. In the preview it uses the sample data.
+const BAL_ERR = { errBalReq:'Enter the mobile number you used when you requested, for example 0917 123 4567.', errBalNone:'We couldn\'t find any accounts with that mobile number. Check the number and try again, or message us.', errBusy:'Too many checks right now. Please try again in an hour, or message us.', errNet:'We couldn\'t connect. Check your internet and try again.' };
+const last10 = v => String(v||'').replace(/\D/g,'').slice(-10);
+function localBalance(phone){
+  const mine = x => last10(x)===phone;
+  const quotes = S.quotes.filter(q=>mine(q.contact)), accts = S.accounts.filter(a=>mine(a.customer.contact) && !a.cancelled);
+  if (!quotes.length && !accts.length) return { ok:false, error:'errBalNone' };
+  const view = a => { const sched = a.schedule.map(it=>({ n:it.n, due:it.due, amount:it.amount, paid:r2(it.paid), status:instStatus(it) })), nx = sched.find(i=>i.status!=='Paid');
+    return { ref:a.quoteId, item:a.productName, price:a.price, months:a.months, monthly:a.monthly, paid:acctPaid(a), balance:acctBalance(a), status:acctStatus(a), next: nx ? { n:nx.n, due:nx.due, amount:r2(nx.amount-nx.paid), status:nx.status } : null, schedule:sched }; };
+  const all = accts.map(view), open = all.filter(a=>a.status!=='Fully Paid');
+  const who = (accts[0]&&accts[0].customer.name) || (quotes[0]&&quotes[0].name) || '';
+  return { ok:true, firstName: who.trim().split(/\s+/)[0]||'', accounts:open, fullyPaid: all.length-open.length,
+    requests: quotes.filter(q=>q.status==='Pending Review').map(q=>({ ref:q.id, item:q.productName, months:q.months||0, status:q.status })) };
 }
 async function submitBalance(form){
   if (M.sending) return;
-  const f = Object.fromEntries(new FormData(form)), ref = normRef(f.ref), phone = String(f.phone||'').replace(/\D/g,'').replace(/^63(?=\d{10}$)/,'0').slice(-10);
-  M.ref = f.ref||''; M.phone = f.phone||'';
-  if (!ref || phone.length<10){ M.err='errBalReq'; renderModal(); return; }
+  const f = Object.fromEntries(new FormData(form)), phone = last10(f.phone);
+  M.phone = f.phone||'';
+  if (phone.length<10){ M.err='errBalReq'; renderModal(); return; }
   let r;
   if (API_URL){
     const mine = M, btn = form.querySelector('[type=submit]'); M.sending = true; if (btn){ btn.disabled=true; btn.textContent='Checking…'; }
-    try{ r = await api({ action:'balance', ref, phone }); }catch(e){ r = { ok:false, error:'errNet' }; }
+    try{ r = await api({ action:'balance', phone }); }catch(e){ r = { ok:false, error:'errNet' }; }
     if (M !== mine) return; M.sending = false;
-  } else r = localBalance(ref, phone);
+  } else r = localBalance(phone);
   if (!r || !r.ok){ M.err = (r && BAL_ERR[r.error]) ? r.error : 'errNet'; renderModal(); return; }
   M.res = r; M.err = ''; renderModal();
+}
+function balAcctHTML(a, open){
+  const pct = a.price ? Math.min(100, a.paid/a.price*100) : 0, paidN = a.schedule.filter(i=>i.status==='Paid').length, nx = a.next;
+  const lab = st => st==='Paid'?'Paid':st==='Overdue'?'Overdue':st==='Due'?'Due soon':'Upcoming';
+  return `<div class="balcard">
+    <div class="bal-top"><div style="min-width:0"><b>${esc(a.item)}</b><span class="small muted num">${esc(a.ref)} · ${esc(mos(a.months))}</span></div>${statusPill(a.status)}</div>
+    <div class="bal-amt"><span>Remaining balance</span><b class="num">${peso(a.balance)}</b></div>
+    <div class="bar" style="height:10px"><i style="width:${pct.toFixed(1)}%"></i></div>
+    <div class="mrow small num" style="margin-top:6px"><span>Paid ${peso(a.paid)} of ${peso(a.price)}</span><span>${paidN} of ${a.months} payments</span></div>
+    ${nx?`<div class="balnext ${nx.status==='Overdue'?'bad':''}"><span>${nx.status==='Overdue'?'Overdue payment':'Next payment'} · #${nx.n}</span><b class="num">${peso(nx.amount)}</b><span>${nx.status==='Overdue'?'Was due':'Due'} ${fdate(nx.due)}</span></div>
+      ${nx.status==='Overdue' && penaltyText()?`<p class="small" style="color:var(--bad);margin-top:8px">${esc(penaltyText())}</p>`:''}`:''}
+    <details class="balsched"${open?' open':''}><summary>Payment schedule</summary><table><thead><tr><th>#</th><th>Due date</th><th class="r">Amount</th><th>Status</th></tr></thead>
+      <tbody>${a.schedule.map(i=>`<tr><td class="num">${i.n}</td><td class="num">${fdate(i.due)}</td><td class="r num">${peso(i.amount)}${i.paid>0&&i.paid<i.amount?`<span class="sub">${peso(i.paid)} paid</span>`:''}</td><td><span class="pill ${PILL[i.status]||''}">${lab(i.status)}</span></td></tr>`).join('')}</tbody></table></details>
+  </div>`;
 }
 function balanceHTML(){
   const m = msgrHref(), msgr = m ? `<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>Message us</span></a>` : '';
   const head = `<div class="m-head"><div><p class="eyebrow">Your account</p><h2 style="font-size:22px;margin-top:4px">Check my balance</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>`;
   const r = M.res;
-  if (r && r.kind==='request'){
-    const msg = { 'Pending Review':'We\'re still reviewing your request. We\'ll message you soon.', 'Declined':'We weren\'t able to approve this request. Message us if you have questions.', 'Completed':'This request is completed.', 'Approved':'Your request is approved. Your payment schedule will show here once your account is set up.' }[r.status] || '';
-    return `${head}<div class="m-body"><div class="done"><h3 style="font-size:20px">Hi ${esc(r.firstName)}!</h3><p class="muted" style="margin-top:6px">${esc(r.item)}${r.months?' · '+esc(mos(r.months)):''}</p>
-      <div style="margin-top:12px">${statusPill(r.status)}</div><p style="margin-top:12px">${esc(msg)}</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">${msgr}<button class="btn" data-act="bal-again">Check another</button></div></div></div>`;
-  }
   if (r){
-    const pct = r.price ? Math.min(100, r.paid/r.price*100) : 0, paidN = r.schedule.filter(i=>i.status==='Paid').length;
-    const nx = r.next, lab = st => st==='Paid'?'Paid':st==='Overdue'?'Overdue':st==='Due'?'Due soon':'Upcoming';
+    const A = r.accounts||[], R = r.requests||[], total = r2(A.reduce((s,a)=>s+a.balance,0));
+    const nexts = A.map(a=>a.next).filter(Boolean).sort((x,y)=>x.due.localeCompare(y.due));
+    const intro = A.length ? `You have ${A.length} account${A.length===1?'':'s'} with payments left.` : r.fullyPaid ? 'All your accounts are fully paid. Thank you!' : R.length ? 'Here\'s where your request stands.' : 'You have no accounts with payments left.';
     return `${head}<div class="m-body">
-      <p class="muted">Hi ${esc(r.firstName)}! Here's your account as of today.</p>
-      <div class="balcard">
-        <div class="bal-top"><div style="min-width:0"><b>${esc(r.item)}</b><span class="small muted num">${esc(r.ref)} · ${esc(mos(r.months))}</span></div>${statusPill(r.status)}</div>
-        <div class="bal-amt"><span>Remaining balance</span><b class="num">${peso(r.balance)}</b></div>
-        <div class="bar" style="height:10px"><i style="width:${pct.toFixed(1)}%"></i></div>
-        <div class="mrow small num" style="margin-top:6px"><span>Paid ${peso(r.paid)} of ${peso(r.price)}</span><span>${paidN} of ${r.months} payments</span></div>
-      </div>
-      ${nx && r.status!=='Cancelled'?`<div class="balnext ${nx.status==='Overdue'?'bad':''}"><span>${nx.status==='Overdue'?'Overdue payment':'Next payment'} · #${nx.n}</span><b class="num">${peso(nx.amount)}</b><span>${nx.status==='Overdue'?'Was due':'Due'} ${fdate(nx.due)}</span></div>
-        ${nx.status==='Overdue' && penaltyText()?`<p class="small" style="color:var(--bad);margin-top:8px">${esc(penaltyText())}</p>`:''}`
-        : r.status==='Fully Paid'?`<div class="balnext ok"><span>All payments are done</span><b>Thank you!</b></div>`:''}
-      <details class="balsched"><summary>Payment schedule</summary><table><thead><tr><th>#</th><th>Due date</th><th class="r">Amount</th><th>Status</th></tr></thead>
-        <tbody>${r.schedule.map(i=>`<tr><td class="num">${i.n}</td><td class="num">${fdate(i.due)}</td><td class="r num">${peso(i.amount)}${i.paid>0&&i.paid<i.amount?`<span class="sub">${peso(i.paid)} paid</span>`:''}</td><td><span class="pill ${PILL[i.status]||''}">${lab(i.status)}</span></td></tr>`).join('')}</tbody></table></details>
+      <p>Hi ${esc(r.firstName)}! ${esc(intro)}</p>
+      ${A.length>1?`<div class="baltotal"><span>Total remaining balance</span><b class="num">${peso(total)}</b>${nexts[0]?`<span class="small">Next payment: ${peso(nexts[0].amount)} on ${fdate(nexts[0].due)}</span>`:''}</div>`:''}
+      ${A.map(a=>balAcctHTML(a, A.length===1)).join('')}
+      ${R.length?`<div class="balreq"><b class="small">Requests we're still reviewing</b>${R.map(q=>`<div class="mrow small"><span>${esc(q.item)}${q.months?' · '+esc(mos(q.months)):''}</span><span class="muted num">${esc(q.ref)}</span></div>`).join('')}<span class="small muted">We'll message you soon.</span></div>`:''}
+      ${r.fullyPaid&&A.length?`<p class="small muted" style="margin-top:10px">${r.fullyPaid} fully paid account${r.fullyPaid===1?' is':'s are'} not shown.</p>`:''}
       <p class="small muted" style="margin-top:12px">Pay through GCash, mobile banking or cash. Just paid? It shows here once we've recorded it. Something looks wrong? Message us.</p>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px"><button class="btn" data-act="bal-again">Check another</button>${msgr}</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;margin-top:14px"><button class="btn" data-act="bal-again">Check another number</button>${msgr}</div>
     </div>`;
   }
   return `${head}<div class="m-body"><form class="form" data-form="balance" novalidate>
-    <p class="muted">Enter the reference number from your request and the mobile number you used.</p>
-    <div class="field"><label for="bl-ref">Reference number</label><input class="input num" id="bl-ref" name="ref" value="${esc(M.ref||'')}" placeholder="MQ-1001" autocapitalize="characters" autocomplete="off"></div>
+    <p class="muted">Enter the mobile number you used when you requested your item.</p>
     <div class="field"><label for="bl-phone">Mobile number</label><input class="input num" id="bl-phone" name="phone" value="${esc(M.phone||'')}" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX"></div>
     ${M.err?`<p class="err" role="alert">${esc(BAL_ERR[M.err]||BAL_ERR.errNet)}</p>`:''}
-    <p class="small muted">Can't find your reference number? It starts with MQ- and was shown after you sent your request. You can also message us.</p>
     <div style="display:flex;justify-content:flex-end"><button type="submit" class="btn primary">Check balance</button></div>
   </form></div>`;
 }
@@ -2494,7 +2500,7 @@ function agreementData(a){
     'The service charge is paid upfront. It is separate from the item price and does not reduce the monthly payments.',
     'The item is brand new with store warranty.',
     'Any change to the due dates or amounts must be agreed by both of us in writing (a Messenger message is fine).',
-    `Check your balance anytime at ${balanceUrl()} using your reference number ${a.quoteId} and your mobile number.`,
+    `Check your balance anytime at ${balanceUrl()} using your mobile number.`,
     `Your personal information is handled according to the ${s.shopName||'AbotVida'} privacy notice and the Data Privacy Act of 2012.`,
   ].filter(Boolean);
   const shopLines = [si.fbPage?'Facebook: '+si.fbPage:'', msgrHref() && !/^https?:\/\/m\.me\/?$/i.test(msgrHref()) ? 'Messenger: '+msgrHref() : '', si.location||'', si.dtiNo?'DTI Reg. No. '+si.dtiNo:''].filter(Boolean);
@@ -3086,7 +3092,7 @@ document.addEventListener('click', e=>{
       document.querySelectorAll('[data-act="theme"]').forEach(b=>{ b.innerHTML = ui.theme==='dark'?SUN:MOON; b.setAttribute('aria-label', themeLabel()); b.title = themeLabel(); }); break;
     case 'req-any': M={kind:'custom',step:'form',err:''}; renderModal(); break;
     case 'balance-open': M={kind:'balance',err:''}; renderModal(); break;
-    case 'bal-again': M={kind:'balance',err:'',ref:'',phone:''}; renderModal(); break;
+    case 'bal-again': M={kind:'balance',err:'',phone:''}; renderModal(); break;
     case 'privacy-open': M={kind:'privacy'}; renderModal(); break;
     case 'owner-tap': ownerTap(); break;
     case 'review-open': M={kind:'review',step:'form',rating:0,err:''}; renderModal(); break;
