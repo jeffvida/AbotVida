@@ -1,6 +1,9 @@
 {
   // Cloudflare serves the files in ./site as the AbotVida website.
+  // worker/index.js runs only for /api/* (the chat assistant); everything else is served straight from ./site.
   "name": "abotvida",
   "compatibility_date": "2026-11-01",
-  "assets": { "directory": "./site" }
+  "main": "worker/index.js",
+  "assets": { "directory": "./site", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "observability": { "enabled": true }
 }

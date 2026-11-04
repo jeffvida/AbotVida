@@ -1,0 +1,18 @@
+# Checks preview branches without publishing anything: builds the site and the chat Worker the same way
+# a real deploy would (dry run), so mistakes show up before they reach main.
+name: Check preview
+
+on:
+  push:
+    branches: ['preview/**']
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npx -y wrangler@4 deploy --dry-run --outdir dist

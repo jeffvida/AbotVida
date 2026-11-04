@@ -353,6 +353,58 @@ body.is-shop .step p{font-size:15px}
 .empty{padding:32px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);background:var(--bg)}
 .shopbar .wrap{gap:10px}
 .shopbar .logo{margin-right:0;flex:none}
+#chat-root{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:40;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+#chat-root[hidden],body:not(.is-shop) #chat-root,body.modal-open #chat-root{display:none!important}
+.chat-fab{width:58px;height:58px;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;cursor:pointer;box-shadow:0 8px 24px rgba(16,53,104,.28);transition:transform .15s}
+.chat-fab:hover{transform:translateY(-2px)}
+.chat-fab:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
+.chat-fab svg{width:27px;height:27px}
+.chat-note{display:flex;align-items:flex-start;gap:4px;max-width:260px;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:16px 16px 4px 16px;box-shadow:var(--shadow);padding:4px 4px 4px 12px;animation:noteIn .25s ease-out}
+.chat-note[hidden]{display:none}
+.chat-note-txt{border:0;background:none;text-align:left;font:inherit;font-size:14px;line-height:1.4;color:inherit;padding:8px 0;cursor:pointer}
+.chat-note-x{border:0;background:none;color:var(--muted);width:30px;height:30px;display:grid;place-items:center;border-radius:50%;cursor:pointer;flex:none}
+.chat-note-x svg{width:14px;height:14px}
+@keyframes noteIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.chat-panel{width:min(390px,calc(100vw - 32px));height:min(600px,calc(100vh - 130px));background:var(--bg);border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);display:flex;flex-direction:column;overflow:hidden}
+.chat-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--line);background:var(--raised)}
+.chat-head .mark.av{width:44px;height:26px}
+.chat-head div{flex:1;display:flex;flex-direction:column}
+.chat-head b{font-size:15px}
+.chat-head span{font-size:12px;color:var(--muted)}
+.chat-log{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:8px;overscroll-behavior:contain}
+.cmsg{max-width:86%;padding:9px 12px;border-radius:16px;font-size:14.5px;line-height:1.45;overflow-wrap:anywhere}
+.cmsg p+p,.cmsg p+ul,.cmsg ul+p{margin-top:6px}
+.cmsg ul{margin:4px 0 0 18px;padding:0}
+.cmsg.bot{align-self:flex-start;background:var(--surface);color:var(--ink);border-bottom-left-radius:4px}
+.cmsg.me{align-self:flex-end;background:var(--logo-navy,#103568);color:#fff;border-bottom-right-radius:4px}
+.cmsg.note{background:var(--warn-soft);color:var(--ink)}
+.chat-prod{font-weight:700;color:var(--logo-navy,#103568);text-decoration:underline;text-underline-offset:2px}
+:root[data-shop-theme="dark"] .chat-prod{color:var(--accent-strong)}
+:root[data-shop-theme="dark"] .cmsg.me{background:var(--accent);color:var(--on-accent)}
+.typing{display:flex;gap:4px;padding:13px 14px}
+.typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dot 1s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.3;transform:none}40%{opacity:1;transform:translateY(-3px)}}
+.chat-quick{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
+.chat-quick .chip{font-size:13px;padding:7px 12px}
+.chat-msgr{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 14px 8px;padding:8px;border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none}
+.chat-msgr svg{width:16px;height:16px}
+.chat-form{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+.chat-form .input{flex:1;min-width:0;border-radius:999px;font-size:16px}
+.chat-send{width:44px;height:44px;flex:none;border-radius:50%;border:0;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;cursor:pointer}
+.chat-send:disabled{opacity:.5}
+.chat-send svg{width:20px;height:20px}
+.chat-foot{font-size:11px;color:var(--muted);padding:0 14px 10px;line-height:1.35}
+@media (max-width:780px){
+  body.is-shop #chat-root{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+  body.is-product #chat-root{bottom:calc(88px + env(safe-area-inset-bottom,0px))}
+  body.chat-open{overflow:hidden}
+  body.chat-open #chat-root{inset:0;right:0;bottom:0;z-index:60}
+  body.chat-open .chat-fab{display:none}
+  .chat-panel{position:fixed;inset:0;width:auto;height:auto;border-radius:0;border:0;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  .chat-head{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+}
+@media (prefers-reduced-motion:reduce){.chat-note,.typing i{animation:none}.chat-fab{transition:none}}
 .balcard{border:1px solid var(--line);border-radius:14px;padding:14px;margin-top:12px;background:var(--raised)}
 .baltotal{display:flex;flex-direction:column;gap:2px;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface)}
 .baltotal span:first-child{font-size:12px;color:var(--muted)}
@@ -1125,7 +1177,7 @@ function privacyBody(){
   return `<p>${name} respects your privacy and follows the Data Privacy Act of 2012 (Republic Act No. 10173).</p>
     <h3>What we collect</h3><ul><li>Your name, mobile number, email address (if you give it) and Messenger profile, and any message you send with a request.</li><li>The item and payment terms you choose.</li><li>If your request is approved: a valid ID and the other details we need to set up your installment account, and your payment records.</li></ul>
     <h3>Why we use it</h3><ul><li>To review your request and contact you about it.</li><li>To buy and deliver your item, and to manage your installment account, payment reminders (including reminder emails if you gave your email) and records.</li><li>To keep the records the law requires.</li></ul>
-    <h3>Who can see it</h3><p>Only ${name}, and a delivery partner when we deliver your item. We keep our records using Google's services. We never sell your information, and we share it with others only if the law requires it.</p>
+    <h3>Who can see it</h3><p>Only ${name}, and a delivery partner when we deliver your item. We keep our records using Google's services. If you use the chat assistant on our shop, your chat messages are sent to Google's Gemini AI service to write the replies, so please don't share IDs, card numbers or addresses in the chat. We never sell your information, and we share it with others only if the law requires it.</p>
     <h3>How long we keep it</h3><p>While your request or account is active, and afterwards only as long as we need it for our records or the law requires.</p>
     <h3>Your rights</h3><p>You can ask to see, correct or delete your information, or withdraw your consent. To do this, ${contact}. You can also file a complaint with the National Privacy Commission (privacy.gov.ph).</p>
     <p class="small">Last updated: November 4, 2026</p>`;
@@ -2771,6 +2823,9 @@ function ownerSettings(){
         <div class="field"><label for="st-pen-en">Late payment penalty</label><textarea class="input" id="st-pen-en" name="penaltyEn">${esc(s.penaltyEn||'')}</textarea><span class="hint">Shown to customers on every offer, and they must tick "I understand" before sending a request. Add your exact amount, e.g. "₱100 for every week late."</span></div>
         <div class="field"><label for="st-tpl">Reminder message</label><textarea class="input" id="st-tpl" name="reminderTemplate">${esc(s.reminderTemplate)}</textarea><span class="hint">Use {name}, {amount} and {date}.</span></div>
         <div class="field"><label for="st-limit">First-purchase limit (₱)</label><input class="input num" id="st-limit" name="newCustLimit" type="number" min="0" step="1" value="${esc(s.newCustLimit||'')}" placeholder="e.g. 15000"><span class="hint">A customer without a fully paid purchase yet, asking for an item above this price, gets a warning before you approve. Blank = no limit.</span></div>
+        <div class="field"><span class="lab">Chat assistant</span>
+          <label for="st-chat" class="agree-line"><input type="checkbox" id="st-chat" name="chatOn" ${s.chatOn!==false?'checked':''}> Show the AbotVida Assistant chat bubble on the shop</label>
+          <span class="hint">Answers customer questions using your products, FAQ and Good to know. It needs your Gemini key saved in Cloudflare. Untick to hide it.</span></div>
         ${API_URL?`<div class="field"><span class="lab">Automatic email reminders</span>
           <label for="st-auto" class="agree-line"><input type="checkbox" id="st-auto" name="autoEmail" ${s.autoEmail?'checked':''}> Email customers who gave an email address: before the due date, on the due date, and weekly while overdue</label>
           ${autoEmailStatus()}</div>`:''}
@@ -3023,7 +3078,7 @@ function initSync(){
    RENDER + EVENTS
    ============================================================ */
 const app = document.getElementById('app'), modalRoot = document.getElementById('modal-root');
-function render(){ clearInterval(window._bt); document.body.classList.toggle('is-shop', view!=='owner'); document.body.classList.toggle('is-product', view==='product'); document.documentElement.lang = 'en'; app.innerHTML = view==='owner' ? renderOwner() : renderShop(); if (view!=='owner') initCarousels(); }
+function render(){ clearInterval(window._bt); document.body.classList.toggle('is-shop', view!=='owner'); document.body.classList.toggle('is-product', view==='product'); document.documentElement.lang = 'en'; app.innerHTML = view==='owner' ? renderOwner() : renderShop(); if (view!=='owner') initCarousels(); chatRender(true); }
 let lastFocus = null;
 function initCarousels(){
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3038,7 +3093,8 @@ function initCarousels(){
   });
 }
 function renderModal(){
-  if (!M){ modalRoot.innerHTML=''; return; }
+  if (!M){ modalRoot.innerHTML=''; document.body.classList.remove('modal-open'); return; }
+  document.body.classList.add('modal-open');
   const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='balance'?balanceHTML() : '';
   const narrow = ['approve','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
   const wasOpen = !!modalRoot.firstChild;
@@ -3054,7 +3110,7 @@ function renderModal(){
   if (first) first.focus({preventScroll:true});
   modalRoot.querySelector('.overlay').scrollTop = 0; const md = modalRoot.querySelector('.modal'); if (md) md.scrollTop = 0;
 }
-function closeModal(){ if (M && M.kind==='balance' && location.hash==='#balance') history.replaceState(null,'',location.pathname+location.search); M=null; modalRoot.innerHTML=''; document.body.style.overflow=''; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); }
+function closeModal(){ document.body.classList.remove('modal-open'); if (M && M.kind==='balance' && location.hash==='#balance') history.replaceState(null,'',location.pathname+location.search); M=null; modalRoot.innerHTML=''; document.body.style.overflow=''; if(lastFocus&&document.contains(lastFocus)) lastFocus.focus(); }
 
 function route(){
   const h = location.hash.slice(1);
@@ -3274,14 +3330,125 @@ document.addEventListener('submit', e=>{
   else if (k==='settings'){
     const f = Object.fromEntries(new FormData(form));
     Object.assign(S.settings, { shopName:f.shopName.trim()||'AbotVida', tagline:(f.tagline||'').trim(), messengerUrl:f.messengerUrl.trim(), ownerEmail:f.ownerEmail.trim(), dueSoonDays:Math.max(1,Math.min(31,+f.dueSoonDays||7)), reminderTemplate:f.reminderTemplate.trim()||S.settings.reminderTemplate, penaltyEn:(f.penaltyEn||'').trim(),
-      ...(API_URL ? { autoEmail: !!f.autoEmail } : {}), newCustLimit: f.newCustLimit==='' ? '' : Math.max(0, Math.round(+f.newCustLimit||0)),
+      ...(API_URL ? { autoEmail: !!f.autoEmail } : {}), newCustLimit: f.newCustLimit==='' ? '' : Math.max(0, Math.round(+f.newCustLimit||0)), chatOn: !!f.chatOn,
       shopInfo:{ fbPage:(f.si_fbPage||'').trim(), location:(f.si_location||'').trim(), hours:(f.si_hours||'').trim(), deliveryAreas:(f.si_deliveryAreas||'').trim(), dtiNo:(f.si_dtiNo||'').trim(), privacyEmail:(f.si_privacyEmail||'').trim() } });
     save(); render(); toast('Settings saved');
   }
 });
 
+/* ============================================================
+   CHAT ASSISTANT (shop only)
+   ============================================================ */
+// A bubble on the right side of the shop. Questions go to /api/chat on our Cloudflare Worker, which asks Gemini
+// using the live catalog and FAQ. Monthly amounts come from the Worker's code, not from the AI.
+// In the preview (no API_URL) simple built-in answers stand in for the AI.
+const CHAT_KEY = 'abotvida-chat', CHAT_NOTE = 'abotvida-chat-note';
+const CHAT_HELLO = "Hi! I'm the AbotVida Assistant. Ask me about our items, monthly payments, requirements or delivery. Puwede ka ring magtanong sa Tagalog.";
+const CHAT_QUICK = ['How does it work?','What do I need?','How much per month?','Do you deliver?'];
+const CHAT_ERR = { off:"The assistant isn't available right now. Please message us on Messenger and we'll reply there.", limit:"We've had a lot of questions today. Please message us on Messenger and we'll reply there.", busy:"I couldn't answer that just now. Please try again, or message us on Messenger.", net:"I couldn't connect. Check your internet and try again." };
+const CHAT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>';
+const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+const CH = { open:false, msgs:[], busy:false, avail: !API_URL, noteT:null };
+try{ const raw = sessionStorage.getItem(CHAT_KEY); if (raw){ const d = JSON.parse(raw); if (Array.isArray(d)) CH.msgs = d.slice(-30); } }catch(e){}
+const chatSave = () => { try{ sessionStorage.setItem(CHAT_KEY, JSON.stringify(CH.msgs.slice(-30))); }catch(e){} };
+const chatRoot = document.createElement('div'); chatRoot.id = 'chat-root'; document.body.appendChild(chatRoot);
+
+function chatFmt(text){
+  const lines = esc(text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[\[p:([\w-]+)\]\]/g,(m,id)=>{ const p=S.products.find(x=>x.id===id); return p?`<a class="chat-prod" href="#item-${esc(p.id)}" data-chat="go">${esc(fullName(p))}</a>`:''; }).split('\n');
+  let out = '', list = false;
+  lines.forEach(l=>{ const m = /^\s*[-*•]\s+(.*)$/.exec(l);
+    if (m){ if(!list){ out+='<ul>'; list=true; } out+=`<li>${m[1]}</li>`; }
+    else { if(list){ out+='</ul>'; list=false; } if (l.trim()) out+=`<p>${l}</p>`; } });
+  return out + (list?'</ul>':'');
+}
+function chatLogHTML(){
+  const bub = (who, html, cls='') => `<div class="cmsg ${who} ${cls}">${html}</div>`;
+  return bub('bot', chatFmt(CHAT_HELLO)) + CH.msgs.map(m=>bub(m.role==='user'?'me':'bot', m.role==='user'?`<p>${esc(m.text)}</p>`:chatFmt(m.text), m.local?'note':'')).join('')
+    + (CH.busy?'<div class="cmsg bot typing" aria-label="Typing"><i></i><i></i><i></i></div>':'');
+}
+function chatRender(keepInput){
+  const show = view!=='owner' && CH.avail && S.settings.chatOn!==false;
+  chatRoot.hidden = !show;
+  document.body.classList.toggle('chat-open', show && CH.open);
+  if (!show) return;
+  const m = msgrHref(), live = m && !/^https?:\/\/m\.me\/?$/i.test(m);
+  const typed = keepInput ? (document.getElementById('chat-in')?.value||'') : '';
+  chatRoot.innerHTML = `
+    ${CH.open?`<section class="chat-panel" role="dialog" aria-label="Chat with AbotVida Assistant">
+      <header class="chat-head">${logoMark()}<div style="min-width:0"><b>AbotVida Assistant</b><span>AI helper · we confirm everything on Messenger</span></div>
+        ${live?`<a class="iconbtn" href="${esc(m)}" target="_blank" rel="noopener" aria-label="Message us on Messenger" title="Message us on Messenger">${I.msgr}</a>`:''}
+        <button class="iconbtn" data-chat="close" aria-label="Close chat">${I.x}</button></header>
+      <div class="chat-log" id="chat-log" aria-live="polite">${chatLogHTML()}</div>
+      ${!CH.msgs.length?`<div class="chat-quick">${CHAT_QUICK.map(q=>`<button class="chip" data-chat="ask" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`:''}
+      ${live&&CH.msgs.length?`<a class="chat-msgr" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>Talk to us on Messenger</span></a>`:''}
+      <form class="chat-form" data-chat-form><label for="chat-in" class="sr">Your question</label><input id="chat-in" class="input" autocomplete="off" maxlength="600" placeholder="Type your question…" enterkeyhint="send" value="${esc(typed)}"><button class="chat-send" type="submit" aria-label="Send" ${CH.busy?'disabled':''}>${SEND_ICON}</button></form>
+      <p class="chat-foot">AI assistant. Answers can be wrong, and only the owner approves requests. Don't share IDs, card numbers or addresses here.</p>
+    </section>`:''}
+    <div class="chat-note" id="chat-note" hidden><button class="chat-note-txt" data-chat="open">Hi! 👋 Questions about monthly payments or requirements? Ask me.</button><button class="chat-note-x" data-chat="note-x" aria-label="Close message">${I.x}</button></div>
+    <button class="chat-fab" data-chat="toggle" aria-label="${CH.open?'Close chat':'Chat with AbotVida Assistant'}" aria-expanded="${CH.open}">${CH.open?I.x:CHAT_ICON}</button>`;
+  const log = document.getElementById('chat-log'); if (log) log.scrollTop = log.scrollHeight;
+}
+function chatNote(){
+  clearTimeout(CH.noteT);
+  let seen = false; try{ seen = !!sessionStorage.getItem(CHAT_NOTE); }catch(e){}
+  if (seen) return;
+  CH.noteT = setTimeout(()=>{ const n = document.getElementById('chat-note'); if (n && !CH.open && !M && !chatRoot.hidden){ n.hidden = false; try{ sessionStorage.setItem(CHAT_NOTE,'1'); }catch(e){} } }, 3000);
+}
+function chatOpen(on){
+  CH.open = on; try{ sessionStorage.setItem(CHAT_NOTE,'1'); }catch(e){}
+  chatRender(); if (on) setTimeout(()=>document.getElementById('chat-in')?.focus({preventScroll:true}), 30); else chatRoot.querySelector('.chat-fab')?.focus();
+}
+async function chatAsk(text){
+  text = String(text||'').trim().slice(0,600); if (!text || CH.busy) return;
+  CH.msgs.push({role:'user', text}); CH.busy = true; chatSave(); chatRender();
+  let reply = null, err = '';
+  if (!API_URL){ await new Promise(r=>setTimeout(r,500)); reply = demoReply(text); }
+  else {
+    try{
+      const hist = CH.msgs.filter(m=>!m.local).slice(-12).map(m=>({role:m.role, text:m.text}));
+      const r = await fetch('/api/chat', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ messages: hist }) });
+      const d = await r.json(); if (d && d.ok) reply = d.reply; else err = (d && CHAT_ERR[d.error]) ? d.error : 'busy';
+    }catch(e){ err = 'net'; }
+  }
+  CH.busy = false;
+  CH.msgs.push(reply ? {role:'assistant', text:reply} : {role:'assistant', text:CHAT_ERR[err], local:true});
+  chatSave(); chatRender();
+}
+// Preview only: simple built-in answers so the chat can be tried without the AI. The live shop uses Gemini.
+function demoReply(text){
+  const t = text.toLowerCase(), words = t.split(/[^a-z0-9]+/).filter(w=>w.length>2);
+  const score = p => { const n = fullName(p).toLowerCase(); return words.filter(w=>n.includes(w)).length; };
+  const best = S.products.map(p=>[p,score(p)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1])[0];
+  if (best){ const p = best[0], sc = dpOf(p);
+    if (p.status==='Out of stock') return `[[p:${p.id}]] is out of stock right now. You can still ask us on Messenger, or try "Request any item".`;
+    return `[[p:${p.id}]]\n- Item price: **${peso(p.price)}**\n- Service charge (paid upfront): **${peso(sc)}**\n` + p.durations.map(m=>{ const pl=plan(p.price,m); return m===1?`- 1 month: **${peso(p.price)}** after 1 month`:`- ${m} months: **${peso(pl.monthly)}**/month${pl.last!==pl.monthly?` (last month ${peso(pl.last)})`:''}`; }).join('\n') + `\nTotal: ${peso(sc+p.price)}. Open the item and tap "Request installment" to send a request.`; }
+  if (/how much|magkano|per month|monthly|buwan/.test(t)) return 'Which item are you looking at? Tell me the name, like "Galaxy A56" or "55 inch TV", and I\'ll show the monthly amounts.';
+  if (/need|requir|kailangan|id\b|atm/.test(t)) return 'To request, you only need your name and mobile number.\n- Once approved, we\'ll ask for a valid ID and your ATM card.\n- Please don\'t send IDs or card numbers in this chat.';
+  if (/deliver|hatid|ship|meet/.test(t)) return 'Small items have free delivery or meet-up. For large items like TVs and appliances, the delivery charge is already included in the price. Message us to check your area.';
+  if (/work|paano|how does|process|service charge|dp\b|down/.test(t)) return 'Here\'s how it works:\n- You pay a one-time **service charge** upfront. It isn\'t deducted from the item price.\n- The item price is then paid monthly, in whole pesos.\n- Total = service charge + item price.\nWe review every request, then message you.';
+  if (/late|penalty|multa/.test(t)) return penaltyText() || 'Please message us before your due date if you can\'t pay on time.';
+  return 'This is the preview, so I only know a few answers here. On the live shop the AI answers this. You can also message us on Messenger.';
+}
+chatRoot.addEventListener('click', e=>{
+  const el = e.target.closest('[data-chat]'); if (!el) return;
+  const a = el.dataset.chat;
+  if (a==='toggle') chatOpen(!CH.open);
+  else if (a==='open'){ chatOpen(true); }
+  else if (a==='close') chatOpen(false);
+  else if (a==='note-x'){ document.getElementById('chat-note').hidden = true; }
+  else if (a==='ask') chatAsk(el.dataset.q);
+  else if (a==='go'){ if (isPhone()) { CH.open=false; chatRender(); } }
+});
+chatRoot.addEventListener('submit', e=>{ e.preventDefault(); const i = document.getElementById('chat-in'); const v = i.value; i.value=''; chatAsk(v); });
+chatRoot.addEventListener('keydown', e=>{ if (e.key==='Escape' && CH.open){ e.stopPropagation(); chatOpen(false); } });
+async function chatInit(){
+  if (API_URL){ try{ const r = await fetch('/api/chat'); const d = await r.json(); CH.avail = !!(d && d.on); }catch(e){ CH.avail = false; } }
+  chatRender(); if (view!=='owner') chatNote();
+}
+
 if (API_URL) initSync();
 route();
+chatInit();
 </script>
 </body>
 </html>
