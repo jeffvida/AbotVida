@@ -390,6 +390,8 @@ body.is-shop .step p{font-size:15px}
 .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);animation:dot 1s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes dot{0%,80%,100%{opacity:.3;transform:none}40%{opacity:1;transform:translateY(-3px)}}
+.chat-btns{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chat-req{white-space:normal;text-align:left;line-height:1.3}
 .chat-quick{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 10px}
 .chat-quick .chip{font-size:13px;padding:7px 12px}
 .chat-msgr{display:flex;align-items:center;justify-content:center;gap:6px;margin:0 14px 8px;padding:8px;border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none}
@@ -1513,7 +1515,7 @@ function customHTML(){
   }
   return `${head}<div class="m-body"><form class="form" data-form="custom" novalidate>
     <p class="muted">${t('reqSub')}</p>
-    <div class="field"><label for="cr-item">${t('itemName')}</label><input class="input" id="cr-item" name="item" placeholder="${t('itemPh')}"></div>
+    <div class="field"><label for="cr-item">${t('itemName')}</label><input class="input" id="cr-item" name="item" value="${esc(M.item||'')}" placeholder="${t('itemPh')}"></div>
     <div class="field"><label for="cr-link">${t('link')} <span class="hint">${t('optional')}</span></label><input class="input" id="cr-link" name="link" inputmode="url" placeholder="${t('linkPh')}"></div>
     <div class="field"><label for="cr-term">${t('prefTerm')}</label><select class="input" id="cr-term" name="months"><option value="">${t('notSure')}</option>${reqTerms().map(d=>`<option value="${d}">${t('months')(d)}</option>`).join('')}</select></div>
     <div class="row2">
@@ -3363,7 +3365,9 @@ document.addEventListener('submit', e=>{
 // In the preview (no API_URL) simple built-in answers stand in for the AI.
 const CHAT_KEY = 'abotvida-chat', CHAT_NOTE = 'abotvida-chat-note';
 const CHAT_HELLO = "Hi! I'm the AbotVida Assistant. Ask me about our items, monthly payments, requirements or delivery. Puwede ka ring magtanong sa Tagalog.";
-const CHAT_QUICK = ['How does it work?','What do I need?','How much per month?','Do you deliver?'];
+const CHAT_QUICK = ['How does it work?','What can I get for ₱1,500 a month?','What do I need?','Do you deliver?'];
+const CHAT_QUICK_ITEM = ['Monthly for this item?','What do I need?','Is delivery free for this item?'];
+const chatViewing = () => view==='product' ? S.products.find(p=>p.id===ui.pid) : null;
 const CHAT_ERR = { off:"The assistant isn't available right now. Please message us on Messenger and we'll reply there.", limit:"We've had a lot of questions today. Please message us on Messenger and we'll reply there.", busy:"I couldn't answer that just now. Please try again, or message us on Messenger.", net:"I couldn't connect. Check your internet and try again." };
 const CHAT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>';
 const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
@@ -3375,12 +3379,17 @@ const chatSave = () => { try{ sessionStorage.setItem(CHAT_KEY, JSON.stringify(CH
 const chatRoot = document.createElement('div'); chatRoot.id = 'chat-root'; document.body.appendChild(chatRoot);
 
 function chatFmt(text){
+  const btns = [];
+  text = String(text).replace(/\[\[req:([\w-]+)(?::(\d+))?\]\]/g,(m,id,mo)=>{ const p=S.products.find(x=>x.id===id); if (!p || p.status==='Out of stock' || btns.length) return '';
+      const n = p.durations.includes(+mo) ? +mo : 0; btns.push(`<button class="btn primary sm chat-req" data-chat="req" data-id="${esc(p.id)}" data-m="${n}">Request ${esc(fullName(p))}${n?' · '+esc(mos(n)):''}</button>`); return ''; })
+    .replace(/\[\[any:([^\]]{1,120})\]\]/g,(m,name)=>{ if (btns.length) return ''; btns.push(`<button class="btn primary sm chat-req" data-chat="any" data-item="${esc(name.trim())}">Request “${esc(name.trim())}”</button>`); return ''; })
+    .replace(/\n{3,}/g,'\n\n').trim();
   const lines = esc(text).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/\[\[p:([\w-]+)\]\]/g,(m,id)=>{ const p=S.products.find(x=>x.id===id); return p?`<a class="chat-prod" href="#item-${esc(p.id)}" data-chat="go">${esc(fullName(p))}</a>`:''; }).split('\n');
   let out = '', list = false;
   lines.forEach(l=>{ const m = /^\s*[-*•]\s+(.*)$/.exec(l);
     if (m){ if(!list){ out+='<ul>'; list=true; } out+=`<li>${m[1]}</li>`; }
     else { if(list){ out+='</ul>'; list=false; } if (l.trim()) out+=`<p>${l}</p>`; } });
-  return out + (list?'</ul>':'');
+  return out + (list?'</ul>':'') + (btns.length?`<div class="chat-btns">${btns.join('')}</div>`:'');
 }
 function chatLogHTML(){
   const bub = (who, html, cls='') => `<div class="cmsg ${who} ${cls}">${html}</div>`;
@@ -3400,7 +3409,7 @@ function chatRender(keepInput){
         ${live?`<a class="iconbtn" href="${esc(m)}" target="_blank" rel="noopener" aria-label="Message us on Messenger" title="Message us on Messenger">${I.msgr}</a>`:''}
         <button class="iconbtn" data-chat="close" aria-label="Close chat">${I.x}</button></header>
       <div class="chat-log" id="chat-log" aria-live="polite">${chatLogHTML()}</div>
-      ${!CH.msgs.length?`<div class="chat-quick">${CHAT_QUICK.map(q=>`<button class="chip" data-chat="ask" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`:''}
+      ${!CH.msgs.length?`<div class="chat-quick">${(chatViewing()?CHAT_QUICK_ITEM:CHAT_QUICK).map(q=>`<button class="chip" data-chat="ask" data-q="${esc(q)}">${esc(q)}</button>`).join('')}</div>`:''}
       ${live&&CH.msgs.length?`<a class="chat-msgr" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>Talk to us on Messenger</span></a>`:''}
       <form class="chat-form" data-chat-form><label for="chat-in" class="sr">Your question</label><input id="chat-in" class="input" autocomplete="off" maxlength="600" placeholder="Type your question…" enterkeyhint="send" value="${esc(typed)}"><button class="chat-send" type="submit" aria-label="Send" ${CH.busy?'disabled':''}>${SEND_ICON}</button></form>
       <p class="chat-foot">AI assistant. Answers can be wrong, and only the owner approves requests. Don't share IDs, card numbers or addresses here.</p>
@@ -3427,7 +3436,7 @@ async function chatAsk(text){
   else {
     try{
       const hist = CH.msgs.filter(m=>!m.local).slice(-12).map(m=>({role:m.role, text:m.text}));
-      const r = await fetch('/api/chat', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ messages: hist }) });
+      const r = await fetch('/api/chat', { method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify({ messages: hist, productId: chatViewing()?.id || '' }) });
       const d = await r.json(); if (d && d.ok) reply = d.reply; else err = (d && CHAT_ERR[d.error]) ? d.error : 'busy';
     }catch(e){ err = 'net'; }
   }
@@ -3437,12 +3446,20 @@ async function chatAsk(text){
 }
 // Preview only: simple built-in answers so the chat can be tried without the AI. The live shop uses Gemini.
 function demoReply(text){
-  const t = text.toLowerCase(), words = t.split(/[^a-z0-9]+/).filter(w=>w.length>2);
+  const t = text.toLowerCase(), words = t.split(/[^a-z0-9]+/).filter(w=>w.length>2), cur = chatViewing();
+  if (/iphone 17|ps6|switch 2|aircon 2hp/.test(t)) return 'We don\'t have that listed yet, but you can still ask us for it.\n[[any:' + (/iphone 17/.test(t)?'iPhone 17':/ps6/.test(t)?'PS6':/switch 2/.test(t)?'Nintendo Switch 2':'2HP Aircon') + ']]';
+  const bud = /(?:₱|php|p)?\s*([\d,]{3,7})\s*(?:a|per|kada|isang)?\s*(?:month|buwan|mo\b)/.exec(t.replace(/,/g,''));
+  if (bud){ const max = +bud[1], fit = S.products.filter(p=>p.status!=='Out of stock').map(p=>({p, amt: Math.min(...p.durations.map(m=>m===1?p.price:plan(p.price,m).monthly))})).filter(x=>x.amt<=max).sort((a,b)=>a.amt-b.amt).slice(0,6);
+    return fit.length ? `For ${peso(max)} a month or less, you can get:\n` + fit.map(x=>`- [[p:${x.p.id}]] ${x.p.durations.length===1&&x.p.durations[0]===1?`**${peso(x.amt)}** paid after 1 month`:`from **${peso(x.amt)}**/month`}`).join('\n') + '\nTap an item to see all its terms.' : `Nothing fits ${peso(max)} a month yet. Try a slightly higher budget, or use "Request any item".`; }
+  const term = /(\d{1,2})\s*(?:months?|mos?|buwan)/.exec(t);
+  if (cur && /this item|ito|request|gusto|kunin/.test(t) && !/need|requir|kailangan|deliver/.test(t)){ const sc=dpOf(cur);
+    return `[[p:${cur.id}]]\n- Service charge: **${peso(sc)}**\n` + cur.durations.map(m=>{ const pl=plan(cur.price,m); return m===1?`- 1 month: **${peso(cur.price)}**`:`- ${m} months: **${peso(pl.monthly)}**/month`; }).join('\n') + `\nTap the button below to send your request.\n[[req:${cur.id}${term?':'+term[1]:''}]]`; }
+  if (cur && /deliver|hatid/.test(t)) return isLarge(cur) ? `[[p:${cur.id}]] is a large item, so the delivery charge is already included in the price.` : `[[p:${cur.id}]] is a small item, so delivery or meet-up is free.`;
   const score = p => { const n = fullName(p).toLowerCase(); return words.filter(w=>n.includes(w)).length; };
   const best = S.products.map(p=>[p,score(p)]).filter(x=>x[1]>0).sort((a,b)=>b[1]-a[1])[0];
   if (best){ const p = best[0], sc = dpOf(p);
     if (p.status==='Out of stock') return `[[p:${p.id}]] is out of stock right now. You can still ask us on Messenger, or try "Request any item".`;
-    return `[[p:${p.id}]]\n- Item price: **${peso(p.price)}**\n- Service charge (paid upfront): **${peso(sc)}**\n` + p.durations.map(m=>{ const pl=plan(p.price,m); return m===1?`- 1 month: **${peso(p.price)}** after 1 month`:`- ${m} months: **${peso(pl.monthly)}**/month${pl.last!==pl.monthly?` (last month ${peso(pl.last)})`:''}`; }).join('\n') + `\nTotal: ${peso(sc+p.price)}. Open the item and tap "Request installment" to send a request.`; }
+    return `[[p:${p.id}]]\n- Item price: **${peso(p.price)}**\n- Service charge (paid upfront): **${peso(sc)}**\n` + p.durations.map(m=>{ const pl=plan(p.price,m); return m===1?`- 1 month: **${peso(p.price)}** after 1 month`:`- ${m} months: **${peso(pl.monthly)}**/month${pl.last!==pl.monthly?` (last month ${peso(pl.last)})`:''}`; }).join('\n') + `\nTotal: ${peso(sc+p.price)}. Tap the button below to send your request.\n[[req:${p.id}]]`; }
   if (/how much|magkano|per month|monthly|buwan/.test(t)) return 'Which item are you looking at? Tell me the name, like "Galaxy A56" or "55 inch TV", and I\'ll show the monthly amounts.';
   if (/need|requir|kailangan|id\b|atm/.test(t)) return 'To request, you only need your name and mobile number.\n- Once approved, we\'ll ask for a valid ID and your ATM card.\n- Please don\'t send IDs or card numbers in this chat.';
   if (/deliver|hatid|ship|meet/.test(t)) return 'Small items have free delivery or meet-up. For large items like TVs and appliances, the delivery charge is already included in the price. Message us to check your area.';
@@ -3459,6 +3476,8 @@ chatRoot.addEventListener('click', e=>{
   else if (a==='note-x'){ document.getElementById('chat-note').hidden = true; }
   else if (a==='ask') chatAsk(el.dataset.q);
   else if (a==='go'){ if (isPhone()) { CH.open=false; chatRender(); } }
+  else if (a==='req'){ const p=S.products.find(x=>x.id===el.dataset.id); if(!p) return; if (isPhone()){ CH.open=false; chatRender(); } openOffer(p.id,'terms'); const n=+el.dataset.m; if (n && p.durations.includes(n)){ M.months=n; renderModal(); } }
+  else if (a==='any'){ if (isPhone()){ CH.open=false; chatRender(); } M={kind:'custom',step:'form',err:'',item:el.dataset.item||''}; renderModal(); }
 });
 chatRoot.addEventListener('submit', e=>{ e.preventDefault(); const i = document.getElementById('chat-in'); const v = i.value; i.value=''; chatAsk(v); });
 chatRoot.addEventListener('keydown', e=>{ if (e.key==='Escape' && CH.open){ e.stopPropagation(); chatOpen(false); } });
