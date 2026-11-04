@@ -24,7 +24,7 @@ export default {
       if (request.method === 'GET') { const on = !!env.GEMINI_API_KEY && shopContext(await catalog()).chatOn; return json({ ok: true, on }); }
       if (request.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
       try { return await chat(request, env); }
-      catch (e) { console.log('chat error', e && e.stack || e); return json({ ok: false, error: 'busy' }, 200); }
+      catch (e) { console.log('chat error', e && e.stack || e); return json({ ok: false, error: 'busy', why: 'exception: ' + String(e && e.message || e).slice(0, 120) }, 200); }
     }
     return env.ASSETS.fetch(request);
   },
@@ -178,11 +178,14 @@ async function chat(request, env) {
     });
     if (r.status === 404) continue;                       // model name not available: try the next one
     if (r.status === 429) return json({ ok: false, error: 'limit' });
-    if (!r.ok) { console.log('gemini', model, r.status, (await r.text()).slice(0, 300)); return json({ ok: false, error: 'busy' }); }
-    const d = await r.json();
-    const text = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map(p => p.thought ? '' : (p.text || '')).join('').trim();
-    if (!text) return json({ ok: false, error: 'busy' });
+    // "why" is a short technical reason (never the key) to help the owner fix setup problems.
+    if (!r.ok) { const t = await r.text(); console.log('gemini', model, r.status, t.slice(0, 300));
+      let why = model + ' ' + r.status; try { const e = JSON.parse(t).error || {}; why += ' ' + (e.status || '') + ': ' + String(e.message || '').slice(0, 160); } catch (e) {}
+      return json({ ok: false, error: 'busy', why }); }
+    const d = await r.json(), cand = (d.candidates || [])[0] || {};
+    const text = ((cand.content || {}).parts || []).map(p => p.thought ? '' : (p.text || '')).join('').trim();
+    if (!text) return json({ ok: false, error: 'busy', why: model + ' empty: ' + (cand.finishReason || (d.promptFeedback && d.promptFeedback.blockReason) || 'no candidates') });
     return json({ ok: true, reply: text.slice(0, 2500) });
   }
-  return json({ ok: false, error: 'busy' });
+  return json({ ok: false, error: 'busy', why: 'no model found: ' + models.join(', ') });
 }
