@@ -1,4 +1,4 @@
-# AbotVida: project handoff (as of Nov 4, 2026, afternoon)
+# AbotVida: project handoff (as of Nov 4, 2026, night)
 
 ## Business
 - **AbotVida**: installment (hulugan) online shop in the Philippines. Formerly Mara Online Shop, then MPVida.
@@ -35,6 +35,7 @@
   - `apps-script/`: Code.gs and SETUP.md
   - `templates/`: product import Excel template
   - `wrangler.jsonc`
+- **Chat assistant server:** `worker/index.js` (Cloudflare Worker, runs only for `/api/*`; everything else is served from `site/`). Needs the Cloudflare secret `GEMINI_API_KEY`. Optional variables: `GEMINI_MODEL`, `CHAT_DAILY_LIMIT`.
 - **Deploys:** GitHub Actions (`.github/workflows/deploy.yml`) publishes `site/` to Cloudflare Workers on every push to `main`. It uses the repository secret `CLOUDFLARE_API_TOKEN` and Cloudflare account ID 14f2c4e88d58b483414ab156bbbacfcd.
   - Cloudflare's own Git build kept timing out, so the owner was asked to disconnect it.
   - workers.dev Production is on and Preview URLs are off. Zero Trust/Access is not used.
@@ -71,6 +72,7 @@
   - The Google Sheet also checks the privacy consent and records when the customer agreed.
 - Done screen: reference number (MQ-…), copy-ready details, Continue on Messenger.
 - Footer: Facebook Page, location, hours and DTI number (each hidden until filled in Settings), Check my balance, Write a review, Privacy notice.
+- **AbotVida Assistant chat bubble** (right side; above the bottom menu / Request bar on phones): welcome note after 3 s, once per visit; opens only when tapped; quick questions; product names link to the product; Messenger hand-off. Replies in the customer's language via Gemini. Monthly amounts are calculated in the Worker, not by the AI. Rules: always "service charge", no approval promises, no pressure, never asks for IDs/cards/addresses, shop topics only. Limits: 20 messages per visitor per hour and 600 per day (in memory, best effort) plus Gemini's own free-tier limits. Hidden until the Gemini key is set, on the owner dashboard, and while a form is open. Privacy notice mentions Gemini.
 - **Check my balance** (footer link, or the `#balance` address): the customer enters only their mobile number and sees every account on it with payments left (balance, next payment, schedule) plus requests still being reviewed. First name only; no contact details, notes or card. Limited to 20 lookups per number and 600 in total per hour. The owner accepted the trade-off that anyone who knows a number can see that customer's balance; a second check (e.g. first name) can be added later.
 - Excel reader loads only when the owner imports a file, so the shop stays fast on mobile data.
 
@@ -107,6 +109,7 @@
   - **month choices for Request any item**
   - banners, Happy customers toggle, reviews approval, customer photos
 - **Settings:**
+  - **Chat assistant** on/off and **Chat logo** (upload, change, or reset; cropped to a square)
   - shop name, tagline, logo (built in; upload replaces it), Messenger link, owner email, due-soon window, penalty text, reminder template
   - first-purchase limit, automatic email reminders
   - shown to customers: Facebook Page, location, hours, delivery areas, DTI number, privacy email
@@ -117,16 +120,17 @@
   - sent from the owner's Gmail as "AbotVida", replies go to the owner email, about 100 emails a day on free Gmail
 
 ## Owner to-do now
-1. **Paste the latest Code.gs** (Nov 4 afternoon version, adds the `balance` action) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
-   - Until this is done, Check my balance on the live shop shows a connection error.
-2. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
-3. In the dashboard Settings:
+1. **Add the Gemini key in Cloudflare:** Workers & Pages → abotvida → Settings → Variables and Secrets → Add → Type: Secret, Name: `GEMINI_API_KEY` → Deploy. The chat bubble stays hidden until this is done.
+2. **Paste the latest Code.gs** (Nov 4 night version: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
+   - Until this is done, Check my balance on the live shop shows a connection error, and the Chat assistant switch and chat logo don't reach customers.
+3. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
+4. In the dashboard Settings:
    - Messenger link, owner email, exact penalty amount
    - Facebook Page, location, hours, delivery areas, privacy email
    - first-purchase limit (optional)
    - tick Automatic email reminders
-4. Add real products and photos. Product import from Abenson is via ChatGPT using the template; leave Image URL blank; check prices by hand.
-5. Disconnect the Cloudflare Git build (abotvida → Settings → Build) and delete the old sparkling-fire-ae80 project.
+5. Add real products and photos. Product import from Abenson is via ChatGPT using the template; leave Image URL blank; check prices by hand.
+6. Disconnect the Cloudflare Git build (abotvida → Settings → Build) and delete the old sparkling-fire-ae80 project.
 
 ## Decisions and preferences
 - Keep the design; changes small; show a preview before pushing live.
@@ -138,14 +142,13 @@
 - Product photos: the owner's own or permitted sources; don't hotlink Abenson images.
 
 ## Next steps (suggested)
-Done and live Nov 4: customer agreement, Check my balance, This month panel, Products search and filter.
+Done and live Nov 4: customer agreement, Check my balance (by mobile number), This month panel, Products search and filter, AbotVida Assistant chat (Gemini) with editable chat logo.
 
 On hold until the owner asks:
 1. "About AbotVida" section and a link to Facebook Page reviews, for trust.
 2. Custom domain (abotvida.com / .ph). When connected, update the og:url and og:image addresses in index.html.
-3. AI chatbot for FAQs and catalog questions: Gemini (owner has a free API key, stored as a Cloudflare secret) via a Worker route; monthly amounts calculated in code, not by the AI; never approves or asks for personal info; privacy notice must mention it. Workers AI as fallback.
-4. Optional: track penalties in balances; per-card limits; a second check on Check my balance.
-5. Business:
+3. Optional: track penalties in balances; per-card limits; a second check on Check my balance.
+4. Business:
    - DTI BNRS, BIR, IPOPHL trademark search (name and AV mark)
    - claim social handles and the domain
    - check with the SEC or a lawyer about lending/financing registration and requiring ATM cards
