@@ -359,6 +359,11 @@ body.is-shop .step p{font-size:15px}
 .chat-fab:hover{transform:translateY(-2px)}
 .chat-fab:focus-visible{outline:3px solid var(--ink);outline-offset:3px}
 .chat-fab svg{width:27px;height:27px}
+.chat-fab img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block}
+.chat-fab.demo{width:46px;height:46px;cursor:default;box-shadow:none;overflow:hidden}
+.chat-fab.demo svg{width:22px;height:22px}
+.chat-av{width:38px;height:38px;border-radius:50%;overflow:hidden;flex:none;background:var(--surface);display:block}
+.chat-av img{width:100%;height:100%;object-fit:cover;display:block}
 .chat-note{display:flex;align-items:flex-start;gap:4px;max-width:260px;background:var(--raised);color:var(--ink);border:1px solid var(--line);border-radius:16px 16px 4px 16px;box-shadow:var(--shadow);padding:4px 4px 4px 12px;animation:noteIn .25s ease-out}
 .chat-note[hidden]{display:none}
 .chat-note-txt{border:0;background:none;text-align:left;font:inherit;font-size:14px;line-height:1.4;color:inherit;padding:8px 0;cursor:pointer}
@@ -2826,6 +2831,10 @@ function ownerSettings(){
         <div class="field"><span class="lab">Chat assistant</span>
           <label for="st-chat" class="agree-line"><input type="checkbox" id="st-chat" name="chatOn" ${s.chatOn!==false?'checked':''}> Show the AbotVida Assistant chat bubble on the shop</label>
           <span class="hint">Answers customer questions using your products, FAQ and Good to know. It needs your Gemini key saved in Cloudflare. Untick to hide it.</span></div>
+        <div class="field"><span class="lab">Chat logo</span><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">${chatAvatar()}<span class="chat-fab demo" aria-hidden="true">${chatFabIcon()}</span>
+          <label class="btn sm" for="st-chatlogo">${s.chatLogo?'Change chat logo':'Upload chat logo'}</label><input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" id="st-chatlogo" data-logo="chatLogo" hidden>
+          ${s.chatLogo?`<button type="button" class="btn sm ghost" data-act="chatlogo-remove">Use AbotVida logo</button>`:''}</div>
+          <span class="hint">Shown on the chat bubble and at the top of the chat. A square picture works best; it is shown in a circle.</span></div>
         ${API_URL?`<div class="field"><span class="lab">Automatic email reminders</span>
           <label for="st-auto" class="agree-line"><input type="checkbox" id="st-auto" name="autoEmail" ${s.autoEmail?'checked':''}> Email customers who gave an email address: before the due date, on the due date, and weekly while overdue</label>
           ${autoEmailStatus()}</div>`:''}
@@ -3143,6 +3152,7 @@ document.addEventListener('click', e=>{
     case 'banner': { const b=(S.banners||[]).find(x=>x.id===id); if(!b) break; if (b.action==='req-any'){ M={kind:'custom',step:'form',err:''}; renderModal(); } else if (b.action==='hot'){ ui.hotOnly=true; ui.shown=0; updateCatalog(); document.getElementById('catalogwrap')?.scrollIntoView({behavior:'smooth'}); } else if ((b.action||'').startsWith('cat:')){ ui.cat=b.action.slice(4); ui.shown=0; updateCatalog(); document.getElementById('catalogwrap')?.scrollIntoView({behavior:'smooth'}); } break; }
     case 'scroll-x': document.getElementById(el.dataset.to)?.scrollIntoView({behavior:'smooth'}); break;
     case 'logo-remove': S.settings.logo=''; save(); render(); break;
+    case 'chatlogo-remove': S.settings.chatLogo=''; save(); render(); toast('Chat logo reset'); break;
     case 'theme': ui.theme = ui.theme==='dark' ? 'light' : 'dark'; try{ localStorage.setItem('mara-theme', ui.theme); }catch(e){}
       document.documentElement.setAttribute('data-shop-theme', ui.theme);
       document.querySelectorAll('[data-act="theme"]').forEach(b=>{ b.innerHTML = ui.theme==='dark'?SUN:MOON; b.setAttribute('aria-label', themeLabel()); b.title = themeLabel(); }); break;
@@ -3253,6 +3263,15 @@ document.addEventListener('keydown', e=>{
 });
 document.addEventListener('change', e=>{
   const tg = e.target;
+  if (tg.dataset && tg.dataset.logo==='chatLogo' && tg.files && tg.files[0]){
+    // Chat logo: cropped to a centered square, 256 × 256, so it fills the round bubble.
+    const f = tg.files[0], fr = new FileReader(); tg.value='';
+    fr.onload = () => { const img = new Image(); img.onload = () => { const side = Math.min(img.width, img.height) || 1, c = document.createElement('canvas'); c.width = c.height = 256;
+        c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, 256, 256);
+        const old = S.settings.chatLogo; S.settings.chatLogo = c.toDataURL('image/png'); if (!save()) S.settings.chatLogo = old; render(); toast('Chat logo updated'); };
+      img.onerror = () => toast('That picture could not be read. Try a JPG or PNG.'); img.src = fr.result; };
+    fr.readAsDataURL(f); return;
+  }
   if (tg.dataset && tg.dataset.logo && tg.files && tg.files[0]){
     const f = tg.files[0], done = url => { S.settings.logo=url; if(!save()) S.settings.logo=''; render(); toast('Logo updated'); };
     if (f.type==='image/svg+xml'){ const fr=new FileReader(); fr.onload=()=>done(fr.result); fr.readAsDataURL(f); }
@@ -3348,6 +3367,8 @@ const CHAT_QUICK = ['How does it work?','What do I need?','How much per month?',
 const CHAT_ERR = { off:"The assistant isn't available right now. Please message us on Messenger and we'll reply there.", limit:"We've had a lot of questions today. Please message us on Messenger and we'll reply there.", busy:"I couldn't answer that just now. Please try again, or message us on Messenger.", net:"I couldn't connect. Check your internet and try again." };
 const CHAT_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h.01M12 11h.01M15.5 11h.01"/></svg>';
 const SEND_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6"/></svg>';
+function chatAvatar(){ return S.settings.chatLogo ? `<span class="chat-av"><img src="${esc(S.settings.chatLogo)}" alt=""></span>` : logoMark(); }
+function chatFabIcon(){ return S.settings.chatLogo ? `<img src="${esc(S.settings.chatLogo)}" alt="">` : CHAT_ICON; }
 const CH = { open:false, msgs:[], busy:false, avail: !API_URL, noteT:null };
 try{ const raw = sessionStorage.getItem(CHAT_KEY); if (raw){ const d = JSON.parse(raw); if (Array.isArray(d)) CH.msgs = d.slice(-30); } }catch(e){}
 const chatSave = () => { try{ sessionStorage.setItem(CHAT_KEY, JSON.stringify(CH.msgs.slice(-30))); }catch(e){} };
@@ -3375,7 +3396,7 @@ function chatRender(keepInput){
   const typed = keepInput ? (document.getElementById('chat-in')?.value||'') : '';
   chatRoot.innerHTML = `
     ${CH.open?`<section class="chat-panel" role="dialog" aria-label="Chat with AbotVida Assistant">
-      <header class="chat-head">${logoMark()}<div style="min-width:0"><b>AbotVida Assistant</b><span>AI helper · we confirm everything on Messenger</span></div>
+      <header class="chat-head">${chatAvatar()}<div style="min-width:0"><b>AbotVida Assistant</b><span>AI helper · we confirm everything on Messenger</span></div>
         ${live?`<a class="iconbtn" href="${esc(m)}" target="_blank" rel="noopener" aria-label="Message us on Messenger" title="Message us on Messenger">${I.msgr}</a>`:''}
         <button class="iconbtn" data-chat="close" aria-label="Close chat">${I.x}</button></header>
       <div class="chat-log" id="chat-log" aria-live="polite">${chatLogHTML()}</div>
@@ -3385,7 +3406,7 @@ function chatRender(keepInput){
       <p class="chat-foot">AI assistant. Answers can be wrong, and only the owner approves requests. Don't share IDs, card numbers or addresses here.</p>
     </section>`:''}
     <div class="chat-note" id="chat-note" hidden><button class="chat-note-txt" data-chat="open">Hi! 👋 Questions about monthly payments or requirements? Ask me.</button><button class="chat-note-x" data-chat="note-x" aria-label="Close message">${I.x}</button></div>
-    <button class="chat-fab" data-chat="toggle" aria-label="${CH.open?'Close chat':'Chat with AbotVida Assistant'}" aria-expanded="${CH.open}">${CH.open?I.x:CHAT_ICON}</button>`;
+    <button class="chat-fab" data-chat="toggle" aria-label="${CH.open?'Close chat':'Chat with AbotVida Assistant'}" aria-expanded="${CH.open}">${CH.open?I.x:chatFabIcon()}</button>`;
   const log = document.getElementById('chat-log'); if (log) log.scrollTop = log.scrollHeight;
 }
 function chatNote(){

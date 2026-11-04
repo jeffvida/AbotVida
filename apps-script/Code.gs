@@ -40,7 +40,7 @@ const LAYOUT = {
   gallery: { tab: 'Photos', cols: ['ID', 'Caption', 'Shown'], row: g => [g.id, g.caption, g.visible === false ? '' : 'Yes'] },
 };
 const SETTINGS_TAB = 'Settings';
-const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial', 'shopInfo', 'goodToKnow', 'faq', 'reqTerms', 'chatOn'];   // shopInfo: Facebook Page, location, hours, delivery areas, DTI no., privacy email
+const PUBLIC_SETTINGS = ['shopName', 'tagline', 'logo', 'messengerUrl', 'penaltyEn', 'showSocial', 'shopInfo', 'goodToKnow', 'faq', 'reqTerms', 'chatOn', 'chatLogo'];   // shopInfo: Facebook Page, location, hours, delivery areas, DTI no., privacy email
 const DEFAULT_SETTINGS = { shopName: 'AbotVida', tagline: 'Mas abot, mas saya.', logo: '', messengerUrl: 'https://m.me/', ownerEmail: '', dueSoonDays: 7, shopInfo: {},
   penaltyEn: 'A penalty is added for every late payment. Please pay on or before your due date.',
   reminderTemplate: 'Hi {name}, this is a friendly reminder that your installment payment of {amount} is due on {date}. Please message us if you have any questions. Thank you!' };
@@ -327,12 +327,13 @@ function ownerSave(b) {
 }
 // Uploaded photos arrive as data: URLs. Keep them in Drive and save only the link in the sheet.
 function storeImages(coll, rec, out) {
-  const field = coll === 'settings' ? 'logo' : (coll === 'banners' || coll === 'gallery') ? 'img' : null;
-  if (!field) return;
-  const v = rec[field]; if (typeof v !== 'string' || v.indexOf('data:') !== 0) return;
-  const url = saveImage(v, coll + '-' + (rec.id || 'logo')); if (!url) return;
-  rec[field] = url;
-  out.push({ coll: coll, id: rec.id || null, field: field, url: url });
+  const fields = coll === 'settings' ? ['logo', 'chatLogo'] : (coll === 'banners' || coll === 'gallery') ? ['img'] : [];
+  fields.forEach(field => {
+    const v = rec[field]; if (typeof v !== 'string' || v.indexOf('data:') !== 0) return;
+    const url = saveImage(v, coll + '-' + (rec.id || field)); if (!url) return;
+    rec[field] = url;
+    out.push({ coll: coll, id: rec.id || null, field: field, url: url });
+  });
 }
 // Saves one data: URL image to the Drive folder and returns its public link.
 function saveImage(dataUrl, name) {
