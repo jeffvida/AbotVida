@@ -190,14 +190,18 @@ async function chat(request, env) {
     generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
   };
   const models = [env.GEMINI_MODEL, ...MODELS].filter((m, i, a) => m && a.indexOf(m) === i);
+  // Two rounds: if every model is busy, wait a moment and try once more (Gemini's free tier is often briefly overloaded).
   let last = { ok: false, error: 'busy', why: 'no model answered' };
-  for (const model of models) {
+  const whys = [], tries = [...models, '', ...models.filter(m => m !== 'gemini-2.5-flash-lite')];
+  for (const model of tries) {
+    if (!model) { if (whys.every(w => / 404 /.test(w))) break; await new Promise(r => setTimeout(r, 1500)); continue; }
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
       method: 'POST', headers: { 'content-type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY }, body: JSON.stringify(payload),
     });
     if ([404, 429, 500, 503].includes(r.status)) {           // not available, over its limit, or busy: try the next model
       const t = await r.text(); let st = ''; try { st = JSON.parse(t).error.status || ''; } catch (e) {}
-      last = r.status === 429 ? { ok: false, error: 'limit', why: model + ' 429 ' + st } : { ok: false, error: 'busy', why: model + ' ' + r.status + ' ' + st };
+      whys.push(model + ' ' + r.status + ' ' + st);
+      last = { ok: false, error: whys.some(w => / 429 /.test(w)) && !whys.some(w => / 50\d /.test(w)) ? 'limit' : 'busy', why: whys.join('; ') };
       continue;
     }
     // "why" is a short technical reason (never the key) to help the owner fix setup problems.
