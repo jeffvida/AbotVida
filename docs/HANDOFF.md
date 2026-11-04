@@ -1,4 +1,4 @@
-# AbotVida: project handoff (as of Nov 4, 2026)
+# AbotVida: project handoff (as of Nov 4, 2026, afternoon)
 
 ## Business
 - **AbotVida**: installment (hulugan) online shop in the Philippines. Formerly Mara Online Shop, then MPVida.
@@ -70,7 +70,8 @@
   - two required ticks: the late payment penalty, and **Data Privacy consent** with an expandable privacy notice
   - The Google Sheet also checks the privacy consent and records when the customer agreed.
 - Done screen: reference number (MQ-…), copy-ready details, Continue on Messenger.
-- Footer: Facebook Page, location, hours and DTI number (each hidden until filled in Settings), Write a review, Privacy notice.
+- Footer: Facebook Page, location, hours and DTI number (each hidden until filled in Settings), Check my balance, Write a review, Privacy notice.
+- **Check my balance** (footer link, or the `#balance` address): the customer enters only their mobile number and sees every account on it with payments left (balance, next payment, schedule) plus requests still being reviewed. First name only; no contact details, notes or card. Limited to 20 lookups per number and 600 in total per hour. The owner accepted the trade-off that anyone who knows a number can see that customer's balance; a second check (e.g. first name) can be added later.
 - Excel reader loads only when the owner imports a file, so the shop stays fast on mobile data.
 
 ## Website: owner side
@@ -81,10 +82,11 @@
   - Customer requests that arrive while the owner is editing are kept.
   - The dashboard refreshes every 30 seconds and when switching tabs.
 - Full-width layout. On phones, Products, Quote Requests, Accounts and Payments show as cards.
-- **Overview:** tiles, payments needing attention, new requests, a "Still to fill in" checklist, and credit cards used.
+- **Overview:** tiles, payments needing attention, new requests, a **This month** panel (customer payments due vs collected, all payments received, service charges received / not yet received, new purchases, card bills with due dates; ‹ › to change month), a "Still to fill in" checklist, and credit cards used.
 - **Products:**
   - add, edit and remove; Excel/CSV import (template `AbotVida-products-template.xlsx`; Product Name and Item Price are required)
   - ★ Hot picks; tap a row to edit; delivery size per product
+  - **search box and category chips** (plus ★ Hot picks) for fast editing
   - **photo upload from phone or computer** (saved to Drive), or paste links
 - **Quote Requests:**
   - Approve creates an account. Service charge received is **unticked by default**.
@@ -94,6 +96,7 @@
 - **Accounts:**
   - schedule, Edit account (details, email, due dates, reminder settings and snooze, card used)
   - service charge status; one account per purchase
+  - **Agreement** button: printable customer agreement (item, price, service charge, monthly amounts, schedule, terms, signature lines); print / save as PDF or copy as text. Have a lawyer review the wording.
 - **Payments:** method, reference number, notes, partial payments, remove a mistaken entry.
 - **Reminders:**
   - overdue, due today, due soon, with copy-ready messages (overdue wording for late ones)
@@ -114,8 +117,8 @@
   - sent from the owner's Gmail as "AbotVida", replies go to the owner email, about 100 emails a day on free Gmail
 
 ## Owner to-do now
-1. **Paste the latest Code.gs** into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
-   - The website already uses whole-peso amounts. Until the paste, new requests are saved with centavos, and FAQ, Good to know and month edits aren't public.
+1. **Paste the latest Code.gs** (Nov 4 afternoon version, adds the `balance` action) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
+   - Until this is done, Check my balance on the live shop shows a connection error.
 2. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
 3. In the dashboard Settings:
    - Messenger link, owner email, exact penalty amount
@@ -135,13 +138,14 @@
 - Product photos: the owner's own or permitted sources; don't hotlink Abenson images.
 
 ## Next steps (suggested)
-1. Customer agreement per account: a printable or shareable summary of item, terms, schedule and penalty.
-2. "Check my balance" page (reference number + phone).
-3. "This month" money panel: service charges earned, expected vs collected, card dues.
-4. "About AbotVida" section and a link to Facebook Page reviews, for trust.
-5. Custom domain (abotvida.com / .ph). When connected, update the og:url and og:image addresses in index.html.
-6. Optional: track penalties in balances; per-card limits.
-7. Business:
+Done and live Nov 4: customer agreement, Check my balance, This month panel, Products search and filter.
+
+On hold until the owner asks:
+1. "About AbotVida" section and a link to Facebook Page reviews, for trust.
+2. Custom domain (abotvida.com / .ph). When connected, update the og:url and og:image addresses in index.html.
+3. AI chatbot for FAQs and catalog questions: Gemini (owner has a free API key, stored as a Cloudflare secret) via a Worker route; monthly amounts calculated in code, not by the AI; never approves or asks for personal info; privacy notice must mention it. Workers AI as fallback.
+4. Optional: track penalties in balances; per-card limits; a second check on Check my balance.
+5. Business:
    - DTI BNRS, BIR, IPOPHL trademark search (name and AV mark)
    - claim social handles and the domain
    - check with the SEC or a lawyer about lending/financing registration and requiring ATM cards
