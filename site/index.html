@@ -3138,7 +3138,9 @@ async function syncPush(){
   SY.busy = false;
   if (!r.ok){
     if (r.error==='auth'){ signOutLocal('You were signed out, so your last change was not saved. Sign in and make it again.'); return; }
-    SY.dirty = true; SY.err = r.error==='tooBig' ? 'A photo or record is too large to save' : 'Not saved yet';
+    SY.dirty = true;
+    // Show the Sheet's own reason, so a setup problem can be fixed instead of retrying forever.
+    SY.err = r.error==='tooBig' ? 'A photo or record is too large to save' : r.error==='net' ? 'Not saved yet (no connection to Google)' : r.detail ? 'Not saved: '+String(r.detail).slice(0,140) : 'Not saved yet ('+(r.error||'unknown')+')';
     syncBadge(); SY.timer = setTimeout(syncPush, r.error==='tooBig' ? 30000 : 8000); return;
   }
   // Photos are now in Drive: swap the uploaded data for the link.
