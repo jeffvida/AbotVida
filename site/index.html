@@ -1108,7 +1108,7 @@ const LANG = {
     msgrPh:'m.me/yourname or facebook.com/yourname', msg:'Message', msgPh:'Color preference, delivery area, questions…',
     disclaimer:'This is only a request. It does not reserve the item yet. No ID needed for now: we\'ll ask for a valid ID and ATM card once your request is approved.',
     back:'Back', submit:'Submit quote request',
-    email:'Email', emailHint:'For payment reminders', emailPh:'you@example.com', errEmail:'Please check your email address, or leave it blank.', ownerBtn:'Owner',
+    email:'Email', emailHint:'We\'ll email a reminder before each payment', emailPh:'you@example.com', errEmail:'Please check your email address, for example juan@gmail.com.', errEmailReq:'Please enter your email so we can send your payment reminders.', ownerBtn:'Owner',
     errReq:'Please enter your name and contact number.', errNum:'Please enter a valid mobile number, for example 0917 123 4567.',
     sent:n=>`Request saved. Salamat, ${n}!`, pending:'Your request is <b>Pending Review</b>. We\'ll confirm availability and your final terms before anything is purchased.',
     cont:'Continue on Messenger', copyDetails:'Copy details', tip:'Tip: paste these details into Messenger so we can find your request faster.',
@@ -1472,7 +1472,7 @@ function offerHTML(){
         <div class="field"><label for="qf-name">${t('fullName')}</label><input class="input" id="qf-name" name="name" autocomplete="name" required></div>
         <div class="field"><label for="qf-contact">${t('contact')}</label><input class="input" id="qf-contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX" required></div>
       </div>
-      <div class="field"><label for="qf-email">${t('email')} <span class="hint">${t('optional')} · ${t('emailHint')}</span></label><input class="input" id="qf-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
+      <div class="field"><label for="qf-email">${t('email')} <span class="hint">${t('emailHint')}</span></label><input class="input" id="qf-email" name="email" type="email" required inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
       <div class="field"><label for="qf-msgr">${t('msgr')} <span class="hint">${t('optional')}</span></label><input class="input" id="qf-msgr" name="messenger" placeholder="${t('msgrPh')}"></div>
       <div class="field"><label for="qf-msg">${t('msg')} <span class="hint">${t('optional')}</span></label><textarea class="input" id="qf-msg" name="message" placeholder="${t('msgPh')}"></textarea></div>
       ${penaltyText()?`<div class="penalty" role="note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/></svg><div><b>${t('penaltyTitle')}</b><span>${esc(penaltyText())}</span>
@@ -1570,7 +1570,7 @@ function customHTML(){
       <div class="field"><label for="cr-name">${t('fullName')}</label><input class="input" id="cr-name" name="name" autocomplete="name"></div>
       <div class="field"><label for="cr-contact">${t('contact')}</label><input class="input" id="cr-contact" name="contact" inputmode="tel" autocomplete="tel" placeholder="09XX XXX XXXX"></div>
     </div>
-    <div class="field"><label for="cr-email">${t('email')} <span class="hint">${t('optional')} · ${t('emailHint')}</span></label><input class="input" id="cr-email" name="email" type="email" inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
+    <div class="field"><label for="cr-email">${t('email')} <span class="hint">${t('emailHint')}</span></label><input class="input" id="cr-email" name="email" type="email" required inputmode="email" autocomplete="email" placeholder="${t('emailPh')}"></div>
     <div class="field"><label for="cr-msgr">${t('msgr')} <span class="hint">${t('optional')}</span></label><input class="input" id="cr-msgr" name="messenger" placeholder="${t('msgrPh')}"></div>
     <div class="field"><label for="cr-msg">${t('msg')} <span class="hint">${t('optional')}</span></label><textarea class="input" id="cr-msg" name="message" placeholder="${t('msgPh')}"></textarea></div>
     ${penaltyText()?`<div class="penalty" role="note"><svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 3l8 14H2z"/><path d="M10 8v4M10 14.5v.1"/></svg><div><b>${t('penaltyTitle')}</b><span>${esc(penaltyText())}</span>
@@ -1587,10 +1587,10 @@ function submitCustom(form){
   if (!item){ M.err='errItem'; renderModal(); return; }
   if (!name || !contact){ M.err='errReq'; renderModal(); return; }
   if (contact.replace(/\D/g,'').length < 10){ M.err='errNum'; renderModal(); return; }
-  const email = (f.email||'').trim(); if (email && !validEmail(email)){ M.err='errEmail'; renderModal(); return; }
+  const email = (f.email||'').trim(); if (!email){ M.err='errEmailReq'; renderModal(); return; } if (!validEmail(email)){ M.err='errEmail'; renderModal(); return; }
   if (penaltyText() && !f.agree){ M.err='errAgree'; renderModal(); return; }
   if (!f.privacy){ M.err='errPrivacy'; renderModal(); return; }
-  if (API_URL) return apiSubmit({ action:'submitCustom', item, link:f.link||'', months:+f.months||0, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
+  if (API_URL) return apiSubmit({ action:'submitCustom', needEmail:true, item, link:f.link||'', months:+f.months||0, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
   const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, email, messenger:(f.messenger||'').trim(), productId:null, productName:item, link:(f.link||'').trim(),
     price:0, months:+f.months||0, dp:0, monthly:0, last:0, total:0, message:(f.message||'').trim(), status:'Pending Review', custom:true, sample:false, lang:ui.lang };
   S.quotes.unshift(rec); save();
@@ -1602,11 +1602,11 @@ function submitQuote(form){
   const name = (f.name||'').trim(), contact = (f.contact||'').trim();
   if (!name || !contact){ M.err = 'errReq'; renderModal(); return; }
   if (contact.replace(/\D/g,'').length < 10){ M.err = 'errNum'; renderModal(); return; }
-  const email = (f.email||'').trim(); if (email && !validEmail(email)){ M.err = 'errEmail'; renderModal(); return; }
+  const email = (f.email||'').trim(); if (!email){ M.err = 'errEmailReq'; renderModal(); return; } if (!validEmail(email)){ M.err = 'errEmail'; renderModal(); return; }
   if (penaltyText() && !f.agree){ M.err = 'errAgree'; renderModal(); return; }
   if (!f.privacy){ M.err = 'errPrivacy'; renderModal(); return; }
   const p = S.products.find(x=>x.id===M.pid), o = quoteFor(p, M.months);
-  if (API_URL) return apiSubmit({ action:'submitQuote', productId:p.id, months:M.months, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
+  if (API_URL) return apiSubmit({ action:'submitQuote', needEmail:true, productId:p.id, months:M.months, name, contact, email, messenger:f.messenger||'', message:f.message||'', agree:!!f.agree, privacy:!!f.privacy });
   const rec = { id:'MQ-'+(S.nextQuote++), createdAt:Date.now(), name, contact, email, messenger:(f.messenger||'').trim(), productId:p.id, productName:fullName(p), price:p.price, ...o, message:(f.message||'').trim(), status:'Pending Review', sample:false, lang:ui.lang };
   S.quotes.unshift(rec); save();
   // Owner email notification would be sent here by a server-side integration (not connected in this prototype).

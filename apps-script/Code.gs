@@ -181,6 +181,7 @@ function checkPerson(b) {
   const name = clip(b.name, 80), contact = clip(b.contact, 30), email = clip(b.email, 120);
   if (!name || !contact) fail('errReq');
   if (digits(contact).length < 10) fail('errNum');
+  if (b.needEmail && !email) fail('errEmailReq');      // the request forms ask for an email (for payment reminders)
   if (email && !validEmail(email)) fail('errEmail');
   return { name: name, contact: contact, email: email, messenger: clip(b.messenger, 200), message: clip(b.message, 600) };
 }
