@@ -2222,8 +2222,8 @@ function applyImport(){
 
 /* ---------- Quotes ---------- */
 function quoteActions(q){
-  return q.status==='Pending Review' ? `<button class="btn sm primary" data-act="approve" data-id="${q.id}">Approve</button><button class="btn sm" data-act="decline" data-id="${q.id}">Decline</button>`
-    : q.status==='Approved' ? `<button class="btn sm" data-act="open-acct" data-id="${q.accountId||''}">Account</button><button class="btn sm ghost" data-act="complete" data-id="${q.id}">Mark completed</button>`
+  return q.status==='Pending Review' ? `<button class="btn sm primary" data-act="approve" data-id="${q.id}">Approve</button><button class="btn sm" data-act="edit-quote" data-id="${q.id}">Edit</button><button class="btn sm" data-act="decline" data-id="${q.id}">Decline</button>`
+    : q.status==='Approved' ? `<button class="btn sm" data-act="open-acct" data-id="${q.accountId||''}">Account</button>${q.accountId&&S.accounts.some(a=>a.id===q.accountId)?`<button class="btn sm" data-act="agreement" data-id="${q.accountId}">Agreement</button>`:''}<button class="btn sm ghost" data-act="complete" data-id="${q.id}">Mark completed</button>`
     : q.status==='Declined' ? `<button class="btn sm ghost" data-act="reopen" data-id="${q.id}">Reopen</button>`
     : (q.accountId?`<button class="btn sm" data-act="open-acct" data-id="${q.accountId}">Account</button>`:'');
 }
@@ -2240,14 +2240,14 @@ function ownerQuotes(){
     <tbody>${list.map(q=>`<tr>
       <td><b class="num">${esc(q.id)}</b><span class="sub">${fdt(q.createdAt)}${q.sample?' · Sample':''}</span></td>
       <td><b>${esc(q.name)}</b><span class="sub num">${esc(q.contact)}</span>${q.msgrAt?`<span class="pill info plain" title="Opened Messenger from the request screen ${esc(fdt(q.msgrAt))}">Opened Messenger</span> `:''}${q.messenger?`<a class="small" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">Messenger</a>`:''}</td>
-      <td style="min-width:200px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}<span class="sub">${prodLine(q)}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}</td>
+      <td style="min-width:200px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}${q.editedAt?` <span class="pill plain" title="Edited ${esc(fdt(q.editedAt))}">Edited</span>`:''}<span class="sub">${prodLine(q)}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}${q.ownerNote?`<span class="sub"><b>Agreed:</b> ${esc(q.ownerNote)}</span>`:''}</td>
       <td class="r num small">${q.custom&&!q.price?'<span class="muted">Price to be quoted</span>':`<b>${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'}</b><span class="sub">${peso(q.dp)} service charge · total ${peso(q.total)}</span>`}</td>
       <td>${pill(q.status)}</td>
       <td class="actions stick">${quoteActions(q)}</td>
     </tr>`).join('')}</tbody></table></div>
   <div class="ocards">${list.map(q=>`<div class="ocard">
       <div class="oc-top"><div style="min-width:0"><b>${esc(q.name)}</b><span class="meta num">${esc(q.contact)} · ${esc(q.id)} · ${fdt(q.createdAt)}</span>${q.msgrAt?'<span class="pill info plain" style="margin-top:4px">Opened Messenger</span>':''}</div>${pill(q.status)}</div>
-      <div><b class="oc-item">${esc(q.productName)}</b>${q.custom?' <span class="pill info plain">Custom</span>':''}<span class="meta">${prodLine(q)}</span><span class="meta num">${money(q)}</span>${q.message?`<span class="meta" style="font-style:italic">"${esc(q.message)}"</span>`:''}</div>
+      <div><b class="oc-item">${esc(q.productName)}</b>${q.custom?' <span class="pill info plain">Custom</span>':''}${q.editedAt?' <span class="pill plain">Edited</span>':''}<span class="meta">${prodLine(q)}</span><span class="meta num">${money(q)}</span>${q.message?`<span class="meta" style="font-style:italic">"${esc(q.message)}"</span>`:''}</div>
       <div class="oc-acts">${q.messenger?`<a class="btn sm" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">${I.msgr}<span>Messenger</span></a>`:''}${quoteActions(q)}</div>
     </div>`).join('')}</div>`:`<div class="empty">No ${ui.quoteFilter==='All'?'':ui.quoteFilter.toLowerCase()+' '}requests.</div>`}`;
 }
@@ -2267,7 +2267,7 @@ function approvalChecksHTML(q){
 function approveHTML(){
   const q = S.quotes.find(x=>x.id===M.id), T = today(), first = addMonths(T,1), cu = !!q.custom;
   const terms = DURATIONS, defT = q.months || 6;
-  return `<div class="m-head"><div><p class="eyebrow">${esc(q.id)}${cu?' · Custom request':''}</p><h2 style="font-size:22px;margin-top:4px">Approve and create account</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
+  return `<div class="m-head"><div><p class="eyebrow">${esc(q.id)}${cu?' · Custom request':''}</p><h2 style="font-size:22px;margin-top:4px">Approve and create account</h2><button type="button" class="btn sm" style="margin-top:8px" data-act="edit-quote" data-id="${esc(q.id)}">Edit request first</button></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
   <div class="m-body"><form class="form" data-form="approve" novalidate>
     <div class="mini-summary num">
       <div><span>Customer</span><b>${esc(q.name)} · ${esc(q.contact)}</b></div>
@@ -2278,15 +2278,15 @@ function approveHTML(){
       ${(()=>{ const pl=plan(q.price,q.months); return `<div><span>${q.months===1?'Due after 1 month':'Monthly installment'}</span><b>${peso(pl.monthly)}${q.months===1?'':' × '+q.months}${pl.last!==pl.monthly?` (last ${peso(pl.last)})`:''}</b></div>`; })()}`}
     </div>
     ${approvalChecksHTML(q)}
-    ${q.message?`<p class="small muted">Customer note: "${esc(q.message)}"</p>`:''}
+    ${q.message?`<p class="small muted">Customer note: "${esc(q.message)}"</p>`:''}${q.ownerNote?`<p class="small muted"><b>Agreed with customer:</b> ${esc(q.ownerNote)}</p>`:''}
     ${(()=>{ const c=customers().get(ckey(q.contact)); if(!c||!c.accounts.length) return ''; const st=custStats(c); return `<div class="callout" style="border-style:solid;margin:0">${I.info}<div><b>Returning customer.</b> ${c.accounts.length} earlier purchase${c.accounts.length>1?'s':''} · ${peso(st.outstanding)} outstanding · ${recordPill(st)} <button type="button" class="btn sm" style="margin-left:4px" data-act="open-cust" data-id="${esc(c.key)}">View customer</button></div></div>`; })()}
     ${cu ? `<p class="small muted">Set the terms you agreed with the customer on Messenger.</p>
     <div class="row2">
-      <div class="field"><label for="ap-price">Item price (₱)</label><input class="input num" type="number" min="1" step="0.01" id="ap-price" name="price" placeholder="Include delivery for large items"></div>
-      <div class="field"><label for="ap-sc">Service charge (₱)</label><input class="input num" type="number" min="0" step="0.01" id="ap-sc" name="sc"></div>
+      <div class="field"><label for="ap-price">Item price (₱)</label><input class="input num" type="number" min="1" step="0.01" id="ap-price" name="price" value="${q.price||''}" placeholder="Include delivery for large items"></div>
+      <div class="field"><label for="ap-sc">Service charge (₱)</label><input class="input num" type="number" min="0" step="0.01" id="ap-sc" name="sc" value="${q.price?q.dp:''}"></div>
     </div>
     <div class="field"><label for="ap-term">Term</label><select class="input" id="ap-term" name="months">${terms.map(d=>`<option value="${d}" ${d===defT?'selected':''}>${mos(d)}</option>`).join('')}</select></div>
-    <div class="mini-summary num" id="ap-sum"><div><span>Enter the price to see the monthly amount</span><b></b></div></div>` : ''}
+    <div class="mini-summary num" id="ap-sum">${apSummary(+q.price||0, q.price?q.dp:'', defT)}</div>` : ''}
     <div class="row2">
       <div class="field"><label for="ap-start">Start date</label><input class="input" type="date" id="ap-start" name="start" value="${T}" required></div>
       <div class="field"><label for="ap-first">First due date</label><input class="input" type="date" id="ap-first" name="first" value="${first}" required><span class="hint">Monthly due day follows this date.</span></div>
@@ -2296,6 +2296,52 @@ function approveHTML(){
     ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
     <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" class="btn primary">Approve and create account</button></div>
   </form></div>`;
+}
+/* ---------- Edit a request before approval (terms agreed with the buyer) ---------- */
+function editQuoteHTML(){
+  const q = S.quotes.find(x=>x.id===M.id); if (!q) return '';
+  const cu = !!q.custom, p = q.productId ? S.products.find(x=>x.id===q.productId) : null;
+  const terms = DURATIONS, mo = q.months || 6;
+  return `<div class="m-head"><div><p class="eyebrow">${esc(q.id)}${cu?' · Custom request':''}</p><h2 style="font-size:22px;margin-top:4px">Edit request</h2><p class="small muted" style="margin-top:4px">Change anything you agreed with the customer. Nothing is approved until you press Approve.</p></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
+  <div class="m-body"><form class="form" data-form="editquote" novalidate>
+    <h3 style="font-size:15px">Item and terms</h3>
+    <div class="field"><label for="eq-item">Item</label><input class="input" id="eq-item" name="item" value="${esc(q.productName)}"><span class="hint">e.g. change the color, size or model you agreed on.</span></div>
+    <div class="row2">
+      <div class="field"><label for="eq-price">Item price (₱)</label><input class="input num" type="number" min="0" step="0.01" id="eq-price" name="price" value="${q.price||''}" placeholder="${cu?'To be quoted':''}"><span class="hint">${p&&p.price!==q.price?`Shop price now ${peso(p.price)}. `:''}Include delivery for large items.</span></div>
+      <div class="field"><label for="eq-sc">Service charge (₱)</label><input class="input num" type="number" min="0" step="0.01" id="eq-sc" name="sc" value="${q.price||!cu?q.dp:''}"></div>
+    </div>
+    <div class="field"><label for="eq-term">Term</label><select class="input" id="eq-term" name="months">${terms.map(d=>`<option value="${d}" ${d===mo?'selected':''}>${mos(d)}</option>`).join('')}</select></div>
+    <div class="mini-summary num" id="eq-sum">${apSummary(+q.price||0, q.price||!cu?q.dp:'', mo)}</div>
+    <div class="field"><label for="eq-note">What you agreed <span class="hint">(optional, only you see this)</span></label><textarea class="input" id="eq-note" name="ownerNote" placeholder="e.g. Gray color, delivery to Imus on Saturday, first payment on the 15th">${esc(q.ownerNote||'')}</textarea></div>
+    ${q.message?`<p class="small muted">Customer note: "${esc(q.message)}"</p>`:''}
+    <h3 style="font-size:15px;margin-top:6px">Customer</h3>
+    <div class="row2">
+      <div class="field"><label for="eq-name">Full name</label><input class="input" id="eq-name" name="name" value="${esc(q.name)}"></div>
+      <div class="field"><label for="eq-contact">Mobile</label><input class="input num" id="eq-contact" name="contact" inputmode="tel" value="${esc(q.contact)}"></div>
+    </div>
+    <div class="row2">
+      <div class="field"><label for="eq-email">Email <span class="hint">for payment reminders</span></label><input class="input" id="eq-email" name="email" type="email" value="${esc(q.email||'')}"></div>
+      <div class="field"><label for="eq-msgr">Messenger</label><input class="input" id="eq-msgr" name="messenger" value="${esc(q.messenger||'')}"></div>
+    </div>
+    ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap"><button type="button" class="btn" data-act="close">Cancel</button><button type="submit" name="next" value="save" class="btn">Save changes</button><button type="submit" name="next" value="approve" class="btn primary">Save and approve…</button></div>
+  </form></div>`;
+}
+function submitEditQuote(form, next){
+  const f = Object.fromEntries(new FormData(form)), q = S.quotes.find(x=>x.id===M.id); if (!q) return;
+  const item = (f.item||'').trim(), name = (f.name||'').trim(), contact = (f.contact||'').trim(), email = (f.email||'').trim();
+  const price = f.price==='' ? 0 : r2(+f.price), sc = f.sc==='' ? (price ? NaN : 0) : r2(+f.sc), months = +f.months;
+  if (!item){ M.err='Enter the item.'; renderModal(); return; }
+  if (!name || contact.replace(/\D/g,'').length < 10){ M.err='Enter the customer\'s name and a valid mobile number.'; renderModal(); return; }
+  if (email && !validEmail(email)){ M.err='Check the email address, or leave it blank.'; renderModal(); return; }
+  if (!q.custom && !(price>0)){ M.err='Enter the item price.'; renderModal(); return; }
+  if (price<0 || !(sc>=0)){ M.err='Enter the service charge (0 is allowed).'; renderModal(); return; }
+  const pl = price>0 ? plan(price, months) : {monthly:0,last:0};
+  Object.assign(q, { productName:item, name, contact, email, messenger:(f.messenger||'').trim(), ownerNote:(f.ownerNote||'').trim(),
+    price, dp: price>0 ? sc : 0, months, monthly:pl.monthly, last:pl.last, total: price>0 ? r2(sc+price) : 0, editedAt:Date.now() });
+  save(); toast('Request updated');
+  if (next==='approve'){ M = {kind:'approve', id:q.id, err:''}; renderModal(); render(); return; }
+  closeModal(); render();
 }
 function apSummary(price, sc, months){
   if (!(price>0)) return `<div><span>Enter the price to see the monthly amount</span><b></b></div>`;
@@ -3308,8 +3354,8 @@ function initCarousels(){
 function renderModal(){
   if (!M){ modalRoot.innerHTML=''; document.body.classList.remove('modal-open'); return; }
   document.body.classList.add('modal-open');
-  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='bulk'?bulkHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='balance'?balanceHTML() : '';
-  const narrow = ['bulk','approve','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
+  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='bulk'?bulkHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='editquote'?editQuoteHTML() : M.kind==='balance'?balanceHTML() : '';
+  const narrow = ['bulk','approve','editquote','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
   const wasOpen = !!modalRoot.firstChild;
   const pf = modalRoot.querySelector('form[data-form]');
   const keep = (pf && M.err) ? [pf.dataset.form, [...pf.elements].filter(el=>el.name && !['file','submit','button'].includes(el.type)).map(el=>[el.name, el.type, el.value, el.checked])] : null;
@@ -3428,6 +3474,7 @@ document.addEventListener('click', e=>{
     case 'card-del-no': ui.pendingCardDel=null; render(); break;
     case 'card-del-yes': S.cards=S.cards.filter(c=>c.id!==id); S.accounts.forEach(a=>{ if(a.cardId===id) a.cardId=''; }); ui.pendingCardDel=null; save(); render(); toast('Card removed'); break;
     case 'approve': M={kind:'approve',id,err:''}; renderModal(); break;
+    case 'edit-quote': M={kind:'editquote',id,err:''}; renderModal(); break;
     case 'decline': S.quotes.find(q=>q.id===id).status='Declined'; save(); render(); toast('Request declined'); break;
     case 'reopen': S.quotes.find(q=>q.id===id).status='Pending Review'; save(); render(); break;
     case 'complete': S.quotes.find(q=>q.id===id).status='Completed'; save(); render(); toast('Marked completed'); break;
@@ -3503,6 +3550,9 @@ document.addEventListener('change', e=>{
   }
   if (tg.dataset && tg.dataset.galcap){ S.gallery.find(x=>x.id===tg.dataset.galcap).caption = tg.value.trim(); save(); toast('Caption saved'); return; }
   if (tg.dataset && tg.dataset.galvis){ S.gallery.find(x=>x.id===tg.dataset.galvis).visible = tg.checked; save(); return; }
+  if (M && M.kind==='editquote' && ['eq-price','eq-sc','eq-term'].includes(tg.id)){
+    document.getElementById('eq-sum').innerHTML = apSummary(+document.getElementById('eq-price').value, document.getElementById('eq-sc').value, +document.getElementById('eq-term').value); return;
+  }
   if (M && M.kind==='approve' && ['ap-price','ap-sc','ap-term'].includes(tg.id)){
     document.getElementById('ap-sum').innerHTML = apSummary(+document.getElementById('ap-price').value, document.getElementById('ap-sc').value, +document.getElementById('ap-term').value); return;
   }
@@ -3551,6 +3601,7 @@ document.addEventListener('submit', e=>{
   if (k==='quote') submitQuote(form);
   else if (k==='product') submitProduct(form);
   else if (k==='approve') submitApprove(form);
+  else if (k==='editquote') submitEditQuote(form, (e.submitter&&e.submitter.value)||'save');
   else if (k==='pay') submitPay(form);
   else if (k==='newpurchase') submitNewPurchase(form);
   else if (k==='editacct') submitEditAcct(form);
