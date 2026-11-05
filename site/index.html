@@ -2281,7 +2281,34 @@ function submitApprove(form){
 }
 
 /* ---------- Reviews & customer photos (owner) ---------- */
-// Trim a picture to an exact shape (keeping the middle) and resize it. Used for banners: 3:1, 1500 × 500.
+// Banner pictures: remove plain margins (e.g. the white space AI image tools leave around a design), then fit 3:1.
+// Taller than 3:1: keep the middle. Wider than 3:1: keep everything, with its main color filling above and below.
+function fitBanner(file, W=1500, H=500, q=0.85){
+  return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{
+    const sc = Math.min(1, 2400/img.width), iw = Math.round(img.width*sc), ih = Math.round(img.height*sc);
+    const src = document.createElement('canvas'); src.width=iw; src.height=ih; const sx=src.getContext('2d'); sx.drawImage(img,0,0,iw,ih);
+    const d = sx.getImageData(0,0,iw,ih).data, px = (x,y)=>{ const i=(y*iw+x)*4; return [d[i],d[i+1],d[i+2]]; };
+    const near = (a,b)=>Math.abs(a[0]-b[0])<=22 && Math.abs(a[1]-b[1])<=22 && Math.abs(a[2]-b[2])<=22;
+    const plainRow = (y,c)=>{ let bad=0; for(let x=0;x<iw;x+=3) if(!near(px(x,y),c)) bad++; return bad <= Math.ceil(iw/3*0.01); };
+    const plainCol = (x,c)=>{ let bad=0; for(let y=0;y<ih;y+=3) if(!near(px(x,y),c)) bad++; return bad <= Math.ceil(ih/3*0.01); };
+    let top=0, bot=ih-1, lft=0, rgt=iw-1;
+    const cT=px(Math.floor(iw/2),0), cB=px(Math.floor(iw/2),ih-1), cL=px(0,Math.floor(ih/2)), cR=px(iw-1,Math.floor(ih/2));
+    while (top<bot-10 && plainRow(top,cT)) top++;
+    while (bot>top+10 && plainRow(bot,cB)) bot--;
+    while (lft<rgt-10 && plainCol(lft,cL)) lft++;
+    while (rgt>lft+10 && plainCol(rgt,cR)) rgt--;
+    let cx=lft, cy=top, cw=rgt-lft+1, ch=bot-top+1;
+    const c = document.createElement('canvas'); c.width=W; c.height=H; const x = c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+    if (cw/ch <= W/H){ const nh = cw*H/W; cy += (ch-nh)/2; ch = nh; x.drawImage(src,cx,cy,cw,ch,0,0,W,H); }
+    else { const dh = ch*W/cw, dy = (H-dh)/2;
+      // Fill the space above and below with the picture's main color (e.g. its navy), then the full picture on top.
+      const bins = {}; for (let yy=cy; yy<cy+ch; yy+=4) for (let xx=cx; xx<cx+cw; xx+=4){ const [r,g,bl]=px(xx,yy), k=(r>>5)+'-'+(g>>5)+'-'+(bl>>5), o=bins[k]||(bins[k]=[0,0,0,0]); o[0]+=r;o[1]+=g;o[2]+=bl;o[3]++; }
+      const top1 = Object.values(bins).sort((a,b)=>b[3]-a[3])[0];
+      x.fillStyle = `rgb(${Math.round(top1[0]/top1[3])},${Math.round(top1[1]/top1[3])},${Math.round(top1[2]/top1[3])})`; x.fillRect(0,0,W,H);
+      x.drawImage(src,cx,cy,cw,ch,0,dy,W,dh); }
+    res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
+}
+// Trim a picture to an exact shape (keeping the middle) and resize it.
 function cropImage(file, W, H, q=0.82){
   return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{
     const want=W/H, have=img.width/img.height; let sw=img.width, sh=img.height;
@@ -3422,7 +3449,7 @@ document.addEventListener('change', e=>{
   if (tg.dataset && tg.dataset.pfphotos && tg.files && tg.files.length){ const fl=[...tg.files]; tg.value=''; addProductPhotos(fl); return; }
   if (tg.id==='shop-sort'){ ui.sort=tg.value; ui.shown=0; updateCatalog(); return; }
   if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); if (tg.dataset.field==='action' || tg.type==='checkbox') render(); toast('Banner saved'); return; }
-  if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); cropImage(tg.files[0],1500,500).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
+  if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); fitBanner(tg.files[0]).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
   if (tg.dataset && tg.dataset.gtk !== undefined){ const L=editList('goodToKnow', DEFAULT_GTK), g=L[+tg.dataset.gtk]; if (g){ g[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
   if (tg.dataset && tg.dataset.faq !== undefined){ const L=editList('faq', DEFAULT_FAQ), x=L[+tg.dataset.faq]; if (x){ x[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
   if (tg.dataset && tg.dataset.rterm){ const on=[...document.querySelectorAll('[data-rterm]:checked')].map(x=>+x.dataset.rterm); if (!on.length){ tg.checked=true; toast('Keep at least one month choice'); return; } S.settings.reqTerms = on; save(); toast('Saved'); return; }
