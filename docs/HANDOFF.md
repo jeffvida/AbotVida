@@ -109,7 +109,7 @@
   - editable **Good to know** (text, icon, shows on: all / small / large / not groceries / groceries)
   - editable **FAQ** (`{penalty}` and `{deliveryAreas}` placeholders)
   - **month choices for Request any item**
-  - banners, Happy customers toggle, reviews approval, customer photos
+  - banners (picture banners are a fixed 3:1 shape; uploads are trimmed to 1500 × 500 keeping the middle; warnings for banners that open nothing), Happy customers toggle, reviews approval, customer photos
 - **Settings:**
   - **Chat assistant** on/off and **Chat logo** (upload, change, or reset; cropped to a square)
   - shop name, tagline, logo (built in; upload replaces it), Messenger link, owner email, due-soon window, penalty text, reminder template
@@ -142,6 +142,10 @@
 - Minimum monthly (e.g. ₱500) and 18–24 months only above ~₱20,000; check cards offer 0% for 18/24 months.
 - Banners: link "Request Any Item"; hide Groceries banner until groceries exist; give "Good Day Shoppers!" a real message; pick 4–6 Hot picks.
 - Done in code: no doubled brand names, Abenson source links private (also stripped from the public catalog once Code.gs is pasted), phone product page overflow fixed, banner warnings in Shop page.
+
+## Photos
+- Product photos show uncropped (object-fit: contain) on a white tile everywhere. Best upload: about 800–1,000 px, square or close.
+- Banner pictures from ChatGPT: landscape 1536 × 1024, keep text and products in the middle third; one big headline.
 
 ## Decisions and preferences
 - Keep the design; changes small; show a preview before pushing live.
