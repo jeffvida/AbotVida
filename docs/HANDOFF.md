@@ -1,4 +1,4 @@
-# AbotVida: project handoff (as of Nov 4, 2026, night)
+# AbotVida: project handoff (as of Nov 6, 2026, morning)
 
 ## Business
 - **AbotVida**: installment (hulugan) online shop in the Philippines. Formerly Mara Online Shop, then MPVida.
@@ -67,10 +67,11 @@
   - **Good to know** (editable), penalty notice, details, More like this
   - sticky Chat / Request installment bar, with a bottom-sheet term picker leading to the form
 - Request forms (catalog item, and Request any item):
-  - name, mobile, **email (optional, for payment reminders)**, Messenger, message
+  - name, mobile, **email (required since Nov 6; used for payment reminders; the Sheet also checks it via `needEmail`)**, Messenger, message
   - two required ticks: the late payment penalty, and **Data Privacy consent** with an expandable privacy notice
   - The Google Sheet also checks the privacy consent and records when the customer agreed.
-- Done screen: reference number (MQ-…), copy-ready details, Continue on Messenger.
+- Done screen (Nov 6): "Request saved. Salamat, {name}!", reference number (MQ-…), one big blue **Send to AbotVida on Messenger** button. It opens the customer's own Messenger at m.me/{Page}?text=… with the request pre-written (ref, item, term, monthly, service charge, total, name; no mobile number), and also copies the text in case the box opens empty. Closing before tapping shows one "One last step" reminder with "Close anyway". Without a real Messenger link in Settings it falls back to a Copy button.
+  - Route decided with the owner: form saves to the Sheet first + owner email, then Messenger hand-off. Messenger is never the only record.
 - Footer: Facebook Page, location, hours and DTI number (each hidden until filled in Settings), Check my balance, Write a review, Privacy notice.
 - **AbotVida Assistant chat bubble** (right side; above the bottom menu / Request bar on phones): welcome note after 3 s, once per visit; opens only when tapped; quick questions; product names link to the product; Messenger hand-off. Replies in the customer's language via Gemini. Monthly amounts are calculated in the Worker, not by the AI. Rules: always "service charge", no approval promises, no pressure, never asks for IDs/cards/addresses, shop topics only. Limits: 20 messages per visitor per hour and 600 per day (in memory, best effort) plus Gemini's own free-tier limits. Knows which product the customer is viewing (quick buttons change on product pages); budget finder from a code-built BUDGET GUIDE; reply tags [[req:ID:MONTHS]] and [[any:NAME]] become buttons that open the request form pre-filled (in-stock items and offered terms only). If all models are busy it waits 1.5 s and tries once more. Hidden until the Gemini key is set, on the owner dashboard, and while a form is open. Privacy notice mentions Gemini.
 - **Check my balance** (footer link, or the `#balance` address): the customer enters only their mobile number and sees every account on it with payments left (balance, next payment, schedule) plus requests still being reviewed. First name only; no contact details, notes or card. Limited to 20 lookups per number and 600 in total per hour. The owner accepted the trade-off that anyone who knows a number can see that customer's balance; a second check (e.g. first name) can be added later.
@@ -96,6 +97,8 @@
   - Approve creates an account. Service charge received is **unticked by default**.
   - Warnings with a required confirmation for: customers with **overdue payments**, and first purchases above the **first-purchase limit** (Settings; blank = off).
   - Custom requests get their price and service charge at approval. Returning-customer alert.
+  - **Opened Messenger** tag on requests whose customer tapped the Messenger button (Code.gs `msgrTap`, stored in script properties `msgrTaps`, merged into quotes on load). It does not confirm Send was pressed.
+  - **New-request email** (Owner email in Settings): HTML email with item, term, monthly, service charge, item price, total, contact; warnings for overdue / returning customer / first purchase above `newCustLimit`; "Open Quote Requests" button using `SITE_URL` in Code.gs (update it when a custom domain is connected).
 - **Customers** are grouped by phone number, with email, purchases, payment record and notes.
 - **Accounts:**
   - schedule, Edit account (details, email, due dates, reminder settings and snooze, card used)
@@ -123,7 +126,7 @@
 
 ## Owner to-do now
 1. **Add the Gemini key in Cloudflare:** Workers & Pages → abotvida → Settings → Variables and Secrets → Add → Type: Secret, Name: `GEMINI_API_KEY` → Deploy. The chat bubble stays hidden until this is done.
-2. **Paste the latest Code.gs** (Nov 4 night version: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive, source links removed from the public catalog, no doubled brand in request names) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
+2. **Paste the latest Code.gs** (Nov 6 version adds `msgrTap`, the richer new-request email and the required-email check; earlier Nov 4 changes: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive, source links removed from the public catalog, no doubled brand in request names) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
    - Until this is done, Check my balance on the live shop shows a connection error, and the Chat assistant switch and chat logo don't reach customers.
 3. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
 4. In the dashboard Settings:
@@ -143,10 +146,15 @@
 - Banners: link "Request Any Item"; hide Groceries banner until groceries exist; give "Good Day Shoppers!" a real message; pick 4–6 Hot picks.
 - Done in code: no doubled brand names, Abenson source links private (also stripped from the public catalog once Code.gs is pasted), phone product page overflow fixed, banner warnings in Shop page.
 
+## Logo exploration (Nov 5, not adopted)
+- Owner asked for a more modern logo; feedback: current mark has too many ideas (bag, A, V, card, waves) and the card reads as "lender". Three sketches made: 1 Steps to reach (recommended), 2 Within reach (abot-kamay), 3 Bag monogram. Owner has not picked one yet.
+
 ## Photos
 - Product photos show uncropped (object-fit: contain) on a white tile everywhere. Best upload: about 800–1,000 px, square or close.
 - Banner pictures from ChatGPT: landscape 1536 × 1024, design fills the whole canvas edge to edge (no white margins), text and products in the middle half of the height, one big headline, no small text.
-- Dashboard save errors now show the Sheet's reason in the top bar ("Not saved: …"). Nov 5: owner reported a banner not saving; reason not yet known (check re-authorization / New version deploy of Code.gs).
+- Banner sizes for ChatGPT: ask for 1536 × 1024; only the strip 256–768 px from the top (1536 × 512) shows; keep text/products ~80 px from the sides and 40 px inside the strip; headline 90–110 px tall; top and bottom quarters plain background.
+- Nov 5: the banner save works now (banner "wawdwadwadwa" is live), but that ChatGPT banner is cropped top and bottom, links to nothing and has no hulugan message; owner is making a new one. Optional site change offered (not built): show tall pictures whole instead of cropping.
+- Default theme is light; it does not follow the phone's dark mode (offered, not built).
 
 ## Decisions and preferences
 - Keep the design; changes small; show a preview before pushing live.
