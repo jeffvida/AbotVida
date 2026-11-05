@@ -514,6 +514,8 @@ main#home{padding-bottom:12px}
 .bicon{flex:none;width:58px;height:58px;border-radius:50%;background:var(--bicon);display:grid;place-items:center;color:var(--accent-strong);font-size:24px}
 .bicon svg{width:30px;height:30px}
 .banner.preview{min-height:96px;cursor:default}
+.banner.has-img{aspect-ratio:3/1;min-height:0;padding:0;height:auto}
+.banner.preview.has-img{max-width:480px}
 .bdots{display:flex;justify-content:center;gap:6px;margin-top:8px}
 .bdots span{width:6px;height:6px;border-radius:99px;background:var(--line);transition:width .2s,background .2s}
 .bdots span.on{width:18px;background:var(--accent)}
@@ -1258,7 +1260,7 @@ function bannersHTML(){
   const B = (S.banners||[]).filter(b=>b.visible!==false); if (!B.length) return '';
   const txt = (b,k) => (ui.lang==='tl' && b[k+'Tl']) ? b[k+'Tl'] : b[k+'En'];
   return `<section class="banners home-only" aria-label="${t('promos')}"><div class="wrap">
-    <div class="btrack" id="btrack">${B.map((b,i)=>`<button class="banner tone-${b.tone||'a'}" data-act="banner" data-id="${b.id}" aria-label="${esc(txt(b,'title'))}">
+    <div class="btrack" id="btrack">${B.map((b,i)=>`<button class="banner tone-${b.tone||'a'}${b.img?' has-img':''}" data-act="banner" data-id="${b.id}" aria-label="${esc(txt(b,'title'))}">
       ${b.img?`<img src="${b.img}" alt="${esc(txt(b,'title'))}">`:`<span class="btext"><b>${esc(txt(b,'title'))}</b><span>${esc(txt(b,'sub')||'')}</span></span><span class="bicon">${b.action==='req-any'?IC.plus:b.action==='cat:Groceries'?CATICON('Groceries'):b.action==='hot'?'★':IC.truck}</span>`}
     </button>`).join('')}</div>
     ${B.length>1?`<div class="bdots" id="bdots">${B.map((b,i)=>`<span class="${i===0?'on':''}"></span>`).join('')}</div>`:''}
@@ -2279,6 +2281,14 @@ function submitApprove(form){
 }
 
 /* ---------- Reviews & customer photos (owner) ---------- */
+// Trim a picture to an exact shape (keeping the middle) and resize it. Used for banners: 3:1, 1500 × 500.
+function cropImage(file, W, H, q=0.82){
+  return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{
+    const want=W/H, have=img.width/img.height; let sw=img.width, sh=img.height;
+    if (have>want) sw=img.height*want; else sh=img.width/want;
+    const c=document.createElement('canvas'); c.width=W; c.height=H; const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,W,H);
+    x.drawImage(img,(img.width-sw)/2,(img.height-sh)/2,sw,sh,0,0,W,H); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
+}
 function compressImage(file, max=900, q=0.78){
   return new Promise((res,rej)=>{ const fr=new FileReader(); fr.onerror=rej; fr.onload=()=>{ const img=new Image(); img.onload=()=>{ const sc=Math.min(1,max/Math.max(img.width,img.height)); const c=document.createElement('canvas'); c.width=Math.round(img.width*sc); c.height=Math.round(img.height*sc); const x=c.getContext('2d'); x.fillStyle='#fff'; x.fillRect(0,0,c.width,c.height); x.drawImage(img,0,0,c.width,c.height); res(c.toDataURL('image/jpeg',q)); }; img.onerror=rej; img.src=fr.result; }; fr.readAsDataURL(file); });
 }
@@ -2325,9 +2335,9 @@ function ownerReviews(){
   return `<div class="o-head"><div><h2>Shop page</h2><p class="muted small">What customers see: banners, Good to know, questions, month choices, customer photos and reviews. Changes save as you type.</p></div></div>
   ${shopTextEditorsHTML()}
   <div class="rem-group"><h3>Banners <span class="pill plain">${BN.length}</span></h3>
-    <p class="small muted" style="margin-bottom:10px">Text banners work right away. You can also upload a banner image (wide, about 1200 × 500). Customers swipe through them.</p>
+    <p class="small muted" style="margin-bottom:10px">Text banners work right away. You can also upload a banner picture: it is trimmed to a wide 3:1 shape (1500 × 500), keeping the middle, so keep text and products in the center. Customers swipe through them.</p>
     ${BN.map(b=>`<div class="rem">
-      <div class="banner tone-${b.tone||'a'} preview">${b.img?`<img src="${b.img}" alt="">`:`<span class="btext"><b>${esc(b.titleEn)}</b><span>${esc(b.subEn||'')}</span></span>`}</div>
+      <div class="banner tone-${b.tone||'a'} preview${b.img?' has-img':''}">${b.img?`<img src="${b.img}" alt="">`:`<span class="btext"><b>${esc(b.titleEn)}</b><span>${esc(b.subEn||'')}</span></span>`}</div>
       <div class="row2">
         <div class="field"><label for="bt-${b.id}">Title</label><input class="input" id="bt-${b.id}" data-ban="${b.id}" data-field="titleEn" value="${esc(b.titleEn)}"></div>
         <div class="field"><label for="bs-${b.id}">Subtitle</label><input class="input" id="bs-${b.id}" data-ban="${b.id}" data-field="subEn" value="${esc(b.subEn||'')}"></div>
@@ -3410,7 +3420,7 @@ document.addEventListener('change', e=>{
   if (tg.dataset && tg.dataset.pfphotos && tg.files && tg.files.length){ const fl=[...tg.files]; tg.value=''; addProductPhotos(fl); return; }
   if (tg.id==='shop-sort'){ ui.sort=tg.value; ui.shown=0; updateCatalog(); return; }
   if (tg.dataset && tg.dataset.ban){ const b=S.banners.find(x=>x.id===tg.dataset.ban); if (tg.type==='checkbox') b.visible=tg.checked; else b[tg.dataset.field]=tg.value.trim(); save(); if (tg.dataset.field==='action' || tg.type==='checkbox') render(); toast('Banner saved'); return; }
-  if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); compressImage(tg.files[0],1400,0.8).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
+  if (tg.dataset && tg.dataset.banimg && tg.files && tg.files[0]){ const b=S.banners.find(x=>x.id===tg.dataset.banimg); cropImage(tg.files[0],1500,500).then(url=>{ const old=b.img; b.img=url; if(!save()) b.img=old; render(); toast('Banner image added'); }).catch(()=>toast('That image could not be read. Try a JPG or PNG.')); return; }
   if (tg.dataset && tg.dataset.gtk !== undefined){ const L=editList('goodToKnow', DEFAULT_GTK), g=L[+tg.dataset.gtk]; if (g){ g[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
   if (tg.dataset && tg.dataset.faq !== undefined){ const L=editList('faq', DEFAULT_FAQ), x=L[+tg.dataset.faq]; if (x){ x[tg.dataset.field] = tg.value.trim(); save(); toast('Saved'); } return; }
   if (tg.dataset && tg.dataset.rterm){ const on=[...document.querySelectorAll('[data-rterm]:checked')].map(x=>+x.dataset.rterm); if (!on.length){ tg.checked=true; toast('Keep at least one month choice'); return; } S.settings.reqTerms = on; save(); toast('Saved'); return; }
