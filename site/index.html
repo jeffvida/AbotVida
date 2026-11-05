@@ -481,6 +481,11 @@ body.is-shop .step p{font-size:15px}
 .mstat small{font-size:12px;color:var(--muted)}
 .mstat.ok b{color:var(--ok)} .mstat.warn b{color:var(--warn)}
 .mbills{border-top:1px solid var(--line);padding-top:12px;display:grid;gap:6px}
+.bk-sec{display:grid;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:12px}
+.bk-t{width:100%;font-size:13px;margin-top:8px;border-collapse:collapse}
+.bk-t th,.bk-t td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+.bk-t .r{text-align:right}
+.bk-t .sub{display:block;font-size:11px;color:var(--muted)}
 .ptools{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
 .psearch{max-width:520px;flex:none}
 .topsearch{flex:1;min-width:0;display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:9px 14px}
@@ -1816,7 +1821,7 @@ function ownerProducts(){
   const c = ui.pcat||'All', n = k => k==='hot' ? S.products.filter(p=>p.hot).length : k==='All' ? S.products.length : S.products.filter(p=>p.category===k).length;
   const chips = [['All','All'], ...CATS.filter(k=>n(k)||c===k).map(k=>[k,k]), ['hot','★ Hot picks']];
   return `
-  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button>${S.products.length?`<button class="btn" id="prod-export" data-act="export-products" title="Download as Excel. Exports what is shown, so use search or a category to export part of the list.">Export${prodFiltered().length!==S.products.length?` ${prodFiltered().length} shown`:''}</button>`:''}<button class="btn primary" data-act="prod-new">Add product</button></div></div>
+  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap">${ui.bulkUndo?`<button class="btn ghost" data-act="bulk-undo">Undo bulk edit</button>`:''}${S.products.length?`<button class="btn" data-act="bulk-open">Bulk edit</button>`:''}<button class="btn" data-act="import-open">Import from file</button>${S.products.length?`<button class="btn" id="prod-export" data-act="export-products" title="Download as Excel. Exports what is shown, so use search or a category to export part of the list.">Export${prodFiltered().length!==S.products.length?` ${prodFiltered().length} shown`:''}</button>`:''}<button class="btn primary" data-act="prod-new">Add product</button></div></div>
   ${S.products.length?`<div class="ptools">
     <label class="topsearch psearch">${I.search}<input id="prod-search" type="search" placeholder="Search by name, brand or category" value="${esc(ui.pq||'')}" aria-label="Search products" autocomplete="off" enterkeyhint="search"></label>
     <div class="chips" role="group" aria-label="Filter by category">${chips.map(([k,l])=>`<button class="chip" data-act="pcat" data-cat="${esc(k)}" aria-pressed="${c===k}">${esc(l)}<span class="ct">${n(k)}</span></button>`).join('')}</div>
@@ -1905,6 +1910,85 @@ function submitProduct(form){
   if (M.id){ Object.assign(S.products.find(x=>x.id===M.id), data, {sample:false}); toast('Product saved'); }
   else { S.products.unshift({id:uid('p'), ...data, sample:false}); toast('Product added'); }
   save(); closeModal(); render();
+}
+
+/* ---------- Bulk edit: service charge and terms ---------- */
+// Apply one service charge rule and/or one set of terms to many products at once.
+// Works on the products shown (search / category) or on all, optionally only within an item price range.
+// "Minimum service charge" with a percent: items whose percent comes out lower get the minimum as a fixed amount.
+// "Skip terms under ₱X a month" drops terms that would make tiny monthly payments (each product keeps at least its shortest chosen term).
+const bulkNew = () => ({ kind:'bulk', scope: prodFiltered().length!==S.products.length ? 'shown' : 'all', doSc:true, dpType:'percent', dpValue:15, min:'', doTerms:false, durations:[3,6,12], minMonthly:'', pmin:'', pmax:'', confirm:false });
+function bulkTargets(){
+  const base = M.scope==='shown' ? prodFiltered() : S.products, lo = +M.pmin||0, hi = M.pmax==='' ? Infinity : +M.pmax;
+  return base.filter(p=>p.price>=lo && p.price<=hi);
+}
+function bulkChange(p){
+  let dpType = p.dpType, dpValue = +p.dpValue||0, durations = p.durations;
+  if (M.doSc){
+    dpType = M.dpType; dpValue = Math.max(0, +M.dpValue||0);
+    if (dpType==='percent' && +M.min>0 && Math.round(p.price*dpValue/100) < +M.min){ dpType='fixed'; dpValue=+M.min; }
+  }
+  if (M.doTerms && M.durations.length){
+    const sel = [...M.durations].sort((a,b)=>a-b), mm = +M.minMonthly||0;
+    durations = mm ? sel.filter(m=>(m===1?p.price:plan(p.price,m).monthly) >= mm) : sel;
+    if (!durations.length) durations = [sel[0]];
+  }
+  const same = dpType===p.dpType && dpValue===+p.dpValue && durations.join()===p.durations.join();
+  return same ? null : { dpType, dpValue, durations };
+}
+function bulkHTML(){
+  const T = bulkTargets(), ch = T.map(p=>[p,bulkChange(p)]).filter(x=>x[1]), shownN = prodFiltered().length, all = S.products.length;
+  const scLab = (t,v) => t==='percent' ? `${+v}%` : peso(v);
+  const head = `<div class="m-head"><div><p class="eyebrow">Products</p><h2 style="font-size:22px;margin-top:4px">Bulk edit</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>`;
+  return `${head}<div class="m-body"><div class="form">
+    <div class="field"><span class="lab">Apply to</span><div class="checks">
+      <label><input type="radio" name="bk-scope" data-bulk="scope" value="all" ${M.scope==='all'?'checked':''}> All products (${all})</label>
+      ${shownN!==all?`<label><input type="radio" name="bk-scope" data-bulk="scope" value="shown" ${M.scope==='shown'?'checked':''}> Only the ${shownN} shown${ui.pcat&&ui.pcat!=='All'?` in ${ui.pcat==='hot'?'Hot picks':esc(ui.pcat)}`:''}${ui.pq?` matching “${esc(ui.pq)}”`:''}</label>`:''}
+    </div></div>
+    <div class="row2"><div class="field"><label for="bk-pmin">Item price from <span class="hint">(optional)</span></label><input class="input num" id="bk-pmin" type="number" min="0" data-bulk="pmin" value="${esc(M.pmin)}" placeholder="₱0"></div>
+      <div class="field"><label for="bk-pmax">to <span class="hint">(optional)</span></label><input class="input num" id="bk-pmax" type="number" min="0" data-bulk="pmax" value="${esc(M.pmax)}" placeholder="No limit"></div></div>
+
+    <div class="bk-sec"><label class="agree-line" for="bk-dosc"><input type="checkbox" id="bk-dosc" data-bulk="doSc" ${M.doSc?'checked':''}> <b>Set the service charge</b></label>
+      ${M.doSc?`<div class="row2">
+        <div class="field"><label for="bk-type">Type</label><select class="input" id="bk-type" data-bulk="dpType"><option value="percent" ${M.dpType==='percent'?'selected':''}>% of item price</option><option value="fixed" ${M.dpType==='fixed'?'selected':''}>Fixed ₱</option></select></div>
+        <div class="field"><label for="bk-val">${M.dpType==='percent'?'Percent':'Amount (₱)'}</label><input class="input num" id="bk-val" type="number" min="0" step="0.01" data-bulk="dpValue" value="${esc(M.dpValue)}"></div></div>
+        ${M.dpType==='percent'?`<div class="field"><label for="bk-min">Minimum service charge (₱) <span class="hint">(optional)</span></label><input class="input num" id="bk-min" type="number" min="0" data-bulk="min" value="${esc(M.min)}" placeholder="e.g. 1000"><span class="hint">Items whose ${+M.dpValue||0}% comes out lower get this amount instead, saved as a fixed ₱.</span></div>`:''}`:''}
+    </div>
+
+    <div class="bk-sec"><label class="agree-line" for="bk-doterms"><input type="checkbox" id="bk-doterms" data-bulk="doTerms" ${M.doTerms?'checked':''}> <b>Set the available terms</b></label>
+      ${M.doTerms?`<div class="checks">${DURATIONS.map(n=>`<label><input type="checkbox" data-bulk="dur" value="${n}" ${M.durations.includes(n)?'checked':''}>${n} mo</label>`).join('')}</div>
+        <div class="field"><label for="bk-mm">Skip terms under this monthly amount (₱) <span class="hint">(optional)</span></label><input class="input num" id="bk-mm" type="number" min="0" data-bulk="minMonthly" value="${esc(M.minMonthly)}" placeholder="e.g. 500">
+        <span class="hint">For example 500 removes 24 months from a ₱1,995 chair (₱84/month). Each item keeps at least its shortest chosen term.</span></div>`:''}
+    </div>
+
+    <div class="mini-summary"><b style="font-variant-numeric:normal">${ch.length} of ${T.length} product${T.length===1?'':'s'} will change</b>
+      ${ch.length?`<div class="tablewrap"><table class="bk-t"><thead><tr><th>Product</th>${M.doSc?'<th class="r">Service charge</th>':''}${M.doTerms?'<th>Terms</th>':''}</tr></thead><tbody>
+        ${ch.slice(0,8).map(([p,c])=>`<tr><td>${esc(fullName(p))}<span class="sub num">${peso(p.price)}</span></td>
+          ${M.doSc?`<td class="r num">${peso(dpOf(p))} → <b>${peso(dpOf({...p,...c}))}</b><span class="sub">${scLab(c.dpType,c.dpValue)}</span></td>`:''}
+          ${M.doTerms?`<td class="num">${p.durations.join(', ')} → <b>${c.durations.join(', ')}</b></td>`:''}</tr>`).join('')}
+      </tbody></table></div>${ch.length>8?`<span class="small muted">…and ${ch.length-8} more.</span>`:''}`:`<span class="small muted">${M.doSc||M.doTerms?'Nothing to change with these settings.':'Tick what you want to change.'}</span>`}
+    </div>
+    ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap">
+      <button class="btn" data-act="close">Cancel</button>
+      ${M.confirm?`<button class="btn danger" data-act="bulk-apply">Yes, change ${ch.length} product${ch.length===1?'':'s'}</button>`:`<button class="btn primary" data-act="bulk-apply" ${ch.length?'':'disabled'}>Apply to ${ch.length} product${ch.length===1?'':'s'}</button>`}
+    </div>
+    ${M.confirm?`<p class="small muted" style="text-align:right">Existing accounts are not affected. You can undo this right after.</p>`:''}
+  </div></div>`;
+}
+function bulkApply(){
+  if (M.doTerms && !M.durations.length){ M.err='Pick at least one term.'; renderModal(); return; }
+  if (M.doSc && M.dpType==='percent' && +M.dpValue>100){ M.err='Percent service charge must be 100 or less.'; renderModal(); return; }
+  const ch = bulkTargets().map(p=>[p,bulkChange(p)]).filter(x=>x[1]);
+  if (!ch.length) return;
+  if (!M.confirm){ M.confirm=true; M.err=''; renderModal(); return; }
+  ui.bulkUndo = ch.map(([p])=>({ id:p.id, dpType:p.dpType, dpValue:p.dpValue, durations:[...p.durations] }));
+  ch.forEach(([p,c])=>Object.assign(p,c));
+  save(); closeModal(); render(); toast(`${ch.length} product${ch.length===1?'':'s'} updated`);
+}
+function bulkUndo(){
+  (ui.bulkUndo||[]).forEach(u=>{ const p=S.products.find(x=>x.id===u.id); if (p) Object.assign(p,{dpType:u.dpType,dpValue:u.dpValue,durations:u.durations}); });
+  const n = (ui.bulkUndo||[]).length; ui.bulkUndo=null; save(); render(); toast(`Undone (${n} product${n===1?'':'s'})`);
 }
 
 /* ---------- Export products to Excel ---------- */
@@ -3145,8 +3229,8 @@ function initCarousels(){
 function renderModal(){
   if (!M){ modalRoot.innerHTML=''; document.body.classList.remove('modal-open'); return; }
   document.body.classList.add('modal-open');
-  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='balance'?balanceHTML() : '';
-  const narrow = ['approve','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
+  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='bulk'?bulkHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='balance'?balanceHTML() : '';
+  const narrow = ['bulk','approve','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
   const wasOpen = !!modalRoot.firstChild;
   const pf = modalRoot.querySelector('form[data-form]');
   const keep = (pf && M.err) ? [pf.dataset.form, [...pf.elements].filter(el=>el.name && !['file','submit','button'].includes(el.type)).map(el=>[el.name, el.type, el.value, el.checked])] : null;
@@ -3250,6 +3334,9 @@ document.addEventListener('click', e=>{
     case 'import-reset': M.raw=null; M.err=''; M.confirm=false; renderModal(); break;
     case 'import-apply': applyImport(); break;
     case 'export-products': exportProducts(); break;
+    case 'bulk-open': M=bulkNew(); renderModal(); break;
+    case 'bulk-apply': bulkApply(); break;
+    case 'bulk-undo': bulkUndo(); break;
     case 'copy-tpl': copy(TEMPLATE_CSV); break;
     case 'qfilter': ui.quoteFilter=el.dataset.f; render(); break;
     case 'pfilter': ui.payFilter=el.dataset.f; render(); break;
@@ -3347,6 +3434,15 @@ document.addEventListener('change', e=>{
     const p = S.products.find(x=>x.id===document.getElementById('np-prod').value), term = document.getElementById('np-term');
     if (e.target.id==='np-prod'){ const d=defaultTerm(p); term.innerHTML = p.durations.map(n=>`<option value="${n}" ${n===d?'selected':''}>${mos(n)}</option>`).join(''); }
     document.getElementById('np-sum').innerHTML = npSummary(p, +term.value); return;
+  }
+  if (M && M.kind==='bulk' && e.target.dataset.bulk){
+    const t = e.target, k = t.dataset.bulk;
+    if (k==='dur') M.durations = [...modalRoot.querySelectorAll('[data-bulk="dur"]:checked')].map(x=>+x.value);
+    else if (t.type==='checkbox') M[k] = t.checked;
+    else if (k==='dpValue') M[k] = Math.max(0, +t.value||0);
+    else M[k] = t.value.trim();
+    M.confirm = false; M.err = '';
+    const sc = modalRoot.querySelector('.overlay')?.scrollTop || 0; renderModal(); const ov = modalRoot.querySelector('.overlay'); if (ov) ov.scrollTop = sc; return;
   }
   if (!M || M.kind!=='import') return;
   const t = e.target;
