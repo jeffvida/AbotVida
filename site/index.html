@@ -1816,7 +1816,7 @@ function ownerProducts(){
   const c = ui.pcat||'All', n = k => k==='hot' ? S.products.filter(p=>p.hot).length : k==='All' ? S.products.length : S.products.filter(p=>p.category===k).length;
   const chips = [['All','All'], ...CATS.filter(k=>n(k)||c===k).map(k=>[k,k]), ['hot','★ Hot picks']];
   return `
-  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button><button class="btn primary" data-act="prod-new">Add product</button></div></div>
+  <div class="o-head"><div><h2>Products</h2><p class="muted small">${S.products.length} items · ${S.products.filter(p=>p.hot).length} in Hot picks (tap ★ to change) · Tap a product to edit it.</p></div><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="import-open">Import from file</button>${S.products.length?`<button class="btn" id="prod-export" data-act="export-products" title="Download as Excel. Exports what is shown, so use search or a category to export part of the list.">Export${prodFiltered().length!==S.products.length?` ${prodFiltered().length} shown`:''}</button>`:''}<button class="btn primary" data-act="prod-new">Add product</button></div></div>
   ${S.products.length?`<div class="ptools">
     <label class="topsearch psearch">${I.search}<input id="prod-search" type="search" placeholder="Search by name, brand or category" value="${esc(ui.pq||'')}" aria-label="Search products" autocomplete="off" enterkeyhint="search"></label>
     <div class="chips" role="group" aria-label="Filter by category">${chips.map(([k,l])=>`<button class="chip" data-act="pcat" data-cat="${esc(k)}" aria-pressed="${c===k}">${esc(l)}<span class="ct">${n(k)}</span></button>`).join('')}</div>
@@ -1907,6 +1907,35 @@ function submitProduct(form){
   save(); closeModal(); render();
 }
 
+/* ---------- Export products to Excel ---------- */
+// Same columns as the import template (plus Hot Pick, Delivery Size and Lowest Monthly), so the file can be edited and imported back.
+// "Lowest Monthly" is for reading only; the import ignores it.
+const EXPORT_HEAD = ['Product Name','Brand','Category','Item Price','Service Charge','Terms','Status','Description','Image URL','Source URL','Hot Pick','Delivery Size','Lowest Monthly'];
+function exportRows(list){
+  return list.map(p=>[p.name, p.brand||'', p.category, p.price, p.dpType==='percent' ? (+p.dpValue)+'%' : +p.dpValue||0, p.durations.join(','), p.status,
+    p.description||'', String(p.imageUrl||'').split('\n').filter(u=>u && !u.startsWith('data:')).join('\n'), p.sourceUrl||'', p.hot?'Yes':'No',
+    p.size==='small'?'Small':p.size==='large'?'Large':'', minMonthly(p)]);
+}
+async function exportProducts(){
+  const list = prodFiltered(), name = `AbotVida-products-${today()}`;
+  if (!list.length){ toast('No products to export'); return; }
+  const rows = [EXPORT_HEAD, ...exportRows(list)];
+  try{
+    await loadXLSX();
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [44,14,16,12,14,14,13,40,30,30,9,12,14].map(w=>({wch:w}));
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range({s:{r:0,c:0},e:{r:rows.length-1,c:EXPORT_HEAD.length-1}}) };
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Products');
+    XLSX.writeFile(wb, name+'.xlsx');
+  }catch(e){
+    // Excel library couldn't load (no connection): save a CSV instead, which Excel and Google Sheets also open.
+    const csv = rows.map(r=>r.map(v=>{ v=String(v??''); return /[",\n]/.test(v) ? '"'+v.replace(/"/g,'""')+'"' : v; }).join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'})); a.download = name+'.csv';
+    document.body.appendChild(a); a.click(); setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+  }
+  toast(`Exported ${list.length} product${list.length===1?'':'s'}`);
+}
+
 /* ---------- Import products from Excel / CSV ---------- */
 const IMPORT_COLS = {
   name:['name','product','product name','item','item name','model','gadget','gadget name'],
@@ -1919,6 +1948,8 @@ const IMPORT_COLS = {
   description:['description','details','specs','specifications'],
   imageUrl:['image','image url','photo','picture','photo url'],
   sourceUrl:['source','source url','link','url','product link','store link'],
+  hot:['hot','hot pick','hot picks'],
+  size:['size','delivery size'],
 };
 const TEMPLATE_CSV = `Product Name,Brand,Category,Item Price,Service Charge,Terms,Status
 Galaxy A56 5G 8GB/256GB,Samsung,Smartphones,23990,3500,"3,6,9,12",Available
@@ -1987,6 +2018,8 @@ function mapImportRows(){
     const cat = matchCat(g('category')); if (cat) out.category=cat;
     const st = matchStatus(g('status')); if (st) out.status=st;
     ['description','imageUrl','sourceUrl'].forEach(k=>{ const v=g(k); if(v) out[k]=v; });
+    const hv = g('hot').toLowerCase(); if (hv) out.hot = /^(yes|y|true|1|★|hot|x)$/.test(hv);
+    const sv = g('size').toLowerCase(); if (/^small/.test(sv)) out.size='small'; else if (/^large|^big/.test(sv)) out.size='large';
     out.match = existing.get((out.brand+' '+out.name).toLowerCase().trim()) || null;
     return out;
   });
@@ -2004,7 +2037,7 @@ function importHTML(){
     <div class="field"><label for="imp-file">Choose your file</label><input class="input" type="file" id="imp-file" accept=".xlsx,.xls,.csv,.txt"><span class="hint">Excel (.xlsx, .xls) or CSV. Only the first sheet is read. Row 1 must be the column names.</span></div>
     ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
     <div class="mini-summary"><b style="font-variant-numeric:normal">Columns we recognize</b>
-      <span class="small">Required: <b>Product Name</b> and <b>Item Price</b>.<br>Optional: Brand, Category, Service Charge (₱3500 or 15%), Terms (e.g. 3,6,12), Status, Description, Image URL, Source URL.</span></div>
+      <span class="small">Required: <b>Product Name</b> and <b>Item Price</b>.<br>Optional: Brand, Category, Service Charge (₱3500 or 15%), Terms (e.g. 3,6,12), Status, Description, Image URL, Source URL, Hot Pick (Yes/No), Delivery Size (Small/Large).</span></div>
     <div><p class="small" style="font-weight:600;margin-bottom:6px">Example layout</p><div class="copybox" id="tpl-box" style="margin-top:0;font-size:12px">${esc(TEMPLATE_CSV)}</div>
       <button class="btn sm" style="margin-top:8px" data-act="copy-tpl">Copy example</button></div>
     ${defaults}
@@ -2050,11 +2083,11 @@ function applyImport(){
   if (M.mode==='replace' && !M.confirm){ M.confirm=true; renderModal(); return; }
   const build = r => ({ id:uid('p'), name:r.name, brand:r.brand, category:r.category||'Other Products', price:r.price,
     dpType:r.dpType||d.dpType, dpValue:r.dpType?r.dpValue:+d.dpValue, durations:r.durations||[...d.durations],
-    status:r.status||'Available', description:r.description||'', imageUrl:r.imageUrl||'', sourceUrl:r.sourceUrl||'', sample:false });
+    status:r.status||'Available', description:r.description||'', imageUrl:r.imageUrl||'', sourceUrl:r.sourceUrl||'', hot:!!r.hot, size:r.size||'', sample:false });
   let added=0, updated=0;
   if (M.mode==='replace'){ S.products = ok.map(build); added = ok.length; }
   else ok.forEach(r=>{
-    if (r.match){ const p=r.match; p.price=r.price; ['brand','category','status','description','imageUrl','sourceUrl','durations'].forEach(k=>{ if(r[k]!==undefined && r[k]!=='') p[k]=r[k]; }); if(r.dpType){ p.dpType=r.dpType; p.dpValue=r.dpValue; } p.sample=false; updated++; }
+    if (r.match){ const p=r.match; p.price=r.price; ['brand','category','status','description','imageUrl','sourceUrl','durations'].forEach(k=>{ if(r[k]!==undefined && r[k]!=='') p[k]=r[k]; }); if(r.dpType){ p.dpType=r.dpType; p.dpValue=r.dpValue; } if (r.hot!==undefined) p.hot=r.hot; if (r.size) p.size=r.size; p.sample=false; updated++; }
     else { S.products.push(build(r)); added++; }
   });
   save(); closeModal(); render();
@@ -3216,6 +3249,7 @@ document.addEventListener('click', e=>{
     case 'import-open': M={kind:'import',raw:null,mode:'merge',confirm:false,err:'',def:{dpType:'percent',dpValue:15,durations:[3,6,9,12]}}; renderModal(); break;
     case 'import-reset': M.raw=null; M.err=''; M.confirm=false; renderModal(); break;
     case 'import-apply': applyImport(); break;
+    case 'export-products': exportProducts(); break;
     case 'copy-tpl': copy(TEMPLATE_CSV); break;
     case 'qfilter': ui.quoteFilter=el.dataset.f; render(); break;
     case 'pfilter': ui.payFilter=el.dataset.f; render(); break;
@@ -3328,7 +3362,7 @@ document.addEventListener('change', e=>{
 });
 document.addEventListener('input', e=>{
   if (e.target.id==='pf-img'){ renderPfPhotos(); return; }
-  if (e.target.id==='prod-search'){ ui.pq = e.target.value; const l=document.getElementById('plist'); if (l) l.innerHTML = prodListHTML(); return; }
+  if (e.target.id==='prod-search'){ ui.pq = e.target.value; const l=document.getElementById('plist'); if (l) l.innerHTML = prodListHTML(); const x=document.getElementById('prod-export'), n=prodFiltered().length; if (x) x.textContent = n!==S.products.length ? `Export ${n} shown` : 'Export'; return; }
   if (e.target.id==='shop-search'){
     ui.q = e.target.value; ui.shown = 0; updateCatalog();
   }
