@@ -109,7 +109,7 @@
   - editable **Good to know** (text, icon, shows on: all / small / large / not groceries / groceries)
   - editable **FAQ** (`{penalty}` and `{deliveryAreas}` placeholders)
   - **month choices for Request any item**
-  - banners (picture banners are a fixed 3:1 shape; uploads are trimmed to 1500 × 500 keeping the middle; warnings for banners that open nothing), Happy customers toggle, reviews approval, customer photos
+  - banners (picture banners are a fixed 3:1 shape; uploads are trimmed to 1500 × 500 (plain margins removed automatically; taller designs keep the middle; wider designs are kept whole on their main color); warnings for banners that open nothing), Happy customers toggle, reviews approval, customer photos
 - **Settings:**
   - **Chat assistant** on/off and **Chat logo** (upload, change, or reset; cropped to a square)
   - shop name, tagline, logo (built in; upload replaces it), Messenger link, owner email, due-soon window, penalty text, reminder template
@@ -145,7 +145,8 @@
 
 ## Photos
 - Product photos show uncropped (object-fit: contain) on a white tile everywhere. Best upload: about 800–1,000 px, square or close.
-- Banner pictures from ChatGPT: landscape 1536 × 1024, keep text and products in the middle third; one big headline.
+- Banner pictures from ChatGPT: landscape 1536 × 1024, design fills the whole canvas edge to edge (no white margins), text and products in the middle half of the height, one big headline, no small text.
+- Dashboard save errors now show the Sheet's reason in the top bar ("Not saved: …"). Nov 5: owner reported a banner not saving; reason not yet known (check re-authorization / New version deploy of Code.gs).
 
 ## Decisions and preferences
 - Keep the design; changes small; show a preview before pushing live.
