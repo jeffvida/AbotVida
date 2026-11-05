@@ -339,7 +339,7 @@ body.is-shop .step p{font-size:15px}
 .hotbtn[aria-pressed="true"]{color:var(--accent)}
 .phgrid{display:flex;gap:8px;flex-wrap:wrap}
 .ph-t{position:relative;width:84px;height:84px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;font-size:11px;color:var(--muted);text-align:center;flex:none}
-.ph-t img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph-t img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
 .ph-t .x{position:absolute;top:4px;right:4px;width:24px;height:24px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;cursor:pointer;font-size:14px;line-height:24px;padding:0}
 .ph-t .mk{position:absolute;left:4px;bottom:4px;font-size:10.5px;font-weight:700;border:0;border-radius:5px;padding:2px 6px;cursor:pointer;background:rgba(0,0,0,.6);color:#fff}
 .ph-t .mk.on{background:var(--accent);color:var(--on-accent);cursor:default}
@@ -347,7 +347,7 @@ body.is-shop .step p{font-size:15px}
 .ph-links summary{cursor:pointer;color:var(--muted);font-size:13px;margin-top:4px}
 /* ===== Shop (Shopee-style) ===== */
 .thumb{position:relative;aspect-ratio:4/3;max-width:100%;background:var(--surface);display:grid;place-items:center;color:var(--muted);overflow:hidden}
-.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--raised)}
+.thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
 .thumb .ph{width:46%;height:auto;opacity:.75}
 .thumb .badges{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;gap:6px;z-index:1}
 .empty{padding:32px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:var(--r);background:var(--bg)}
@@ -541,7 +541,7 @@ section.row{padding-block:18px 4px}
 .pcard.is-out{opacity:.7}
 .pimg{position:relative;aspect-ratio:1/1;background:var(--surface);display:grid;place-items:center;color:var(--muted)}
 .pimg .ph{width:52%;opacity:.6}
-.pimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pimg img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:6%;box-sizing:border-box}
 .outlbl{position:absolute;inset:auto 0 0;background:rgba(43,47,56,.7);color:#fff;font-size:12px;font-weight:700;text-align:center;padding:4px}
 .pbody{padding:9px 10px 11px;display:grid;gap:4px}
 .pname{font-size:14px;line-height:1.35;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:2.7em}
@@ -595,7 +595,7 @@ section.row{padding-block:18px 4px}
 @media (max-width:780px){.gtrack{border-radius:0}}
 .gslide{scroll-snap-align:start;aspect-ratio:1/1;position:relative;display:grid;place-items:center;background:var(--surface);color:var(--muted)}
 .gslide .ph{width:40%;opacity:.6}
-.gslide img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:var(--bg)}
+.gslide img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:4%;box-sizing:border-box}
 .gsample{position:absolute;top:12px;left:12px}
 .pinfo{display:grid;gap:12px;align-content:start;min-width:0}
 @media (max-width:780px){.pinfo{background:var(--bg);padding:16px;margin-inline:0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}}
@@ -626,7 +626,7 @@ section.row{padding-block:18px 4px}
 .sh-prod{display:flex;gap:12px;align-items:center;min-width:0}
 .sh-thumb{width:56px;height:56px;border-radius:10px;background:var(--surface);position:relative;overflow:hidden;display:grid;place-items:center;color:var(--muted);flex:none}
 .sh-thumb .ph{width:70%}
-.sh-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.sh-thumb img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff;padding:3px;box-sizing:border-box}
 .sh-name{display:block;font-size:14px;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .sh-price{font-family:var(--f-display);font-weight:700;color:var(--accent-strong);font-size:18px}
 .sh-price small{font-family:var(--f-body);font-size:12.5px;font-weight:600}
