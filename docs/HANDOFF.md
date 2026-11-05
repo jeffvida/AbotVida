@@ -89,6 +89,8 @@
   - add, edit and remove; Excel/CSV import (template `AbotVida-products-template.xlsx`; Product Name and Item Price are required)
   - ★ Hot picks; tap a row to edit; delivery size per product
   - **search box and category chips** (plus ★ Hot picks) for fast editing
+  - **Export** to Excel (what is shown; same columns as import plus Hot Pick, Delivery Size, Lowest Monthly). Import also reads Hot Pick (Yes/No) and Delivery Size (Small/Large).
+  - **Bulk edit**: service charge (% with optional minimum, or fixed ₱) and terms (with optional "skip terms under ₱X a month"), on all or the shown products, optional item price range; before → after summary, confirm, and Undo.
   - **photo upload from phone or computer** (saved to Drive), or paste links
 - **Quote Requests:**
   - Approve creates an account. Service charge received is **unticked by default**.
