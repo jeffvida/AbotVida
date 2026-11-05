@@ -20,6 +20,7 @@ const MAX_FAILS = 8;                // wrong passwords before a 15-minute lockou
 const IMAGE_FOLDER = 'AbotVida images';
 const TZ = 'Asia/Manila';           // dates for reminders
 const LOG_TAB = 'Reminder log';
+const SITE_URL = 'https://abotvida.jeffhersonvida.workers.dev';   // used for the dashboard link in new-request emails; change when a custom domain is connected
 const imageUrl = id => 'https://lh3.googleusercontent.com/d/' + id;
 
 /* Sheet layout: readable columns first, record JSON last. */
@@ -64,6 +65,7 @@ function doPost(e) {
       case 'submitCustom': return json(submitCustom(body));
       case 'submitReview': return json(submitReview(body));
       case 'balance': return json(checkBalance(body));
+      case 'msgrTap': return json(msgrTap(body));
       case 'login': return json(login(body));
       case 'logout': return json(logout(body));
       case 'ownerLoad': requireOwner(body); return json({ ok: true, state: readAll() });
@@ -135,6 +137,7 @@ function nextQuoteNo() {
 function readAll() {
   const st = { settings: readSettings(), nextQuote: +props().getProperty('nextQuote') || 1001 };
   COLLECTIONS.forEach(c => st[c] = readColl(c));
+  const taps = msgrTaps(); st.quotes.forEach(q => { if (!q.msgrAt && taps[q.id]) q.msgrAt = taps[q.id]; });
   st.emailLog = readEmailLog().slice(-400);
   st.reminderStatus = reminderStatus();
   return st;
@@ -254,11 +257,57 @@ function checkBalance(b) {
     requests: quotes.filter(q => q.status === 'Pending Review').map(q => ({ ref: q.id, item: q.productName, months: q.months || 0, status: q.status })) };
 }
 
-// Optional email to the owner for each new request (uses "Owner email" in Settings).
+// The customer tapped "Send to AbotVida on Messenger" on the done screen.
+// Kept apart from the Requests tab so it never clashes with the owner's own saves. Only works for a recent request with the matching number.
+function msgrTaps() { try { return JSON.parse(props().getProperty('msgrTaps') || '{}'); } catch (e) { return {}; } }
+function msgrTap(b) {
+  const id = clip(b.id, 20), phone = digits(b.contact).slice(-10);
+  if (!/^MQ-\d+$/.test(id) || phone.length < 10) return { ok: true };
+  return withLock(() => {
+    const q = readColl('quotes').filter(x => x.id === id)[0];
+    if (!q || digits(q.contact).slice(-10) !== phone || Date.now() - (+q.createdAt || 0) > 2 * 864e5) return { ok: true };
+    const taps = msgrTaps(); if (taps[id]) return { ok: true };
+    taps[id] = Date.now();
+    const keys = Object.keys(taps).sort((a, b2) => taps[b2] - taps[a]).slice(0, 300), keep = {};   // keep the newest 300
+    keys.forEach(k => keep[k] = taps[k]);
+    props().setProperty('msgrTaps', JSON.stringify(keep));
+    return { ok: true };
+  });
+}
+
+// Email to the owner for each new request (uses "Owner email" in Settings).
 function notifyOwner(q) {
   try {
-    const to = readSettings().ownerEmail; if (!to) return;
-    MailApp.sendEmail(to, 'New AbotVida request ' + q.id, [q.name + ' · ' + q.contact + (q.email ? ' · ' + q.email : ''), q.productName + (q.months ? ' · ' + q.months + ' months' : ''), q.message ? 'Note: ' + q.message : '', '', 'Open your owner dashboard to review it.'].join('\n'));
+    const s = readSettings(), to = s.ownerEmail; if (!to) return;
+    const esc = x => String(x == null ? '' : x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    const phone = digits(q.contact).slice(-10), T = todayStr();
+    const accts = readColl('accounts').filter(a => !a.cancelled && !a.sample && digits((a.customer || {}).contact).slice(-10) === phone);
+    const overdue = accts.filter(a => (a.schedule || []).some(i => (+i.paid || 0) < (+i.amount || 0) - 0.001 && dayDiff(T, i.due) < 0));
+    const flags = [];
+    if (overdue.length) flags.push('⚠ Has overdue payments on ' + overdue.map(a => a.productName).join(', '));
+    else if (accts.length) flags.push('Returning customer: ' + accts.length + ' purchase' + (accts.length > 1 ? 's' : '') + ' before (' + accts.map(a => a.productName).join(', ') + ')');
+    const proven = accts.some(a => (a.schedule || []).length && (a.schedule || []).every(i => (+i.paid || 0) >= (+i.amount || 0) - 0.001));
+    if (+s.newCustLimit && !proven && +q.price > +s.newCustLimit) flags.push('⚠ First purchase above your first-purchase limit of ' + pesoText(s.newCustLimit));
+    const custom = q.custom && !q.price, mo = q.months ? q.months + (q.months === 1 ? ' month' : ' months') : 'Not sure yet';
+    const rows = [['Item', q.productName + (custom ? ' (custom request)' : '')]];
+    if (q.link) rows.push(['Item link', q.link]);
+    if (custom) rows.push(['Preferred term', mo], ['Price', 'To be quoted by you']);
+    else rows.push(['Term', mo], ['Monthly', pesoText(q.monthly) + (q.months > 1 && q.last && q.last !== q.monthly ? ' (last month ' + pesoText(q.last) + ')' : '')],
+      ['Service charge', pesoText(q.dp)], ['Item price', pesoText(q.price)], ['Total', pesoText(q.total)]);
+    rows.push(['Customer', q.name], ['Mobile', q.contact]);
+    if (q.email) rows.push(['Email', q.email]);
+    if (q.messenger) rows.push(['Messenger', q.messenger]);
+    if (q.message) rows.push(['Note', q.message]);
+    const link = SITE_URL + '/#owner';
+    const subject = 'New request ' + q.id + ': ' + q.productName + (custom ? '' : ' · ' + mo) + ' · ' + q.name;
+    const text = [subject, ''].concat(flags, flags.length ? [''] : [], rows.map(r => r[0] + ': ' + r[1]), ['', 'The customer was asked to send these details on Messenger too.', 'Review it: ' + link]).join('\n');
+    const html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#14234B;max-width:520px">'
+      + '<p style="margin:0 0 4px;color:#5D6681">New AbotVida request</p><h2 style="margin:0 0 12px;font-size:20px">' + esc(q.id) + ' · ' + esc(q.productName) + '</h2>'
+      + flags.map(f => '<p style="margin:0 0 8px;padding:8px 10px;border-radius:8px;background:' + (f.charAt(0) === '⚠' ? '#FDEDEA;color:#C0392B' : '#EAF0FB;color:#2F5FB0') + '">' + esc(f) + '</p>').join('')
+      + '<table style="border-collapse:collapse;width:100%">' + rows.map(r => '<tr><td style="padding:6px 0;color:#5D6681;width:130px;vertical-align:top">' + esc(r[0]) + '</td><td style="padding:6px 0;font-weight:bold">' + esc(r[1]) + '</td></tr>').join('') + '</table>'
+      + '<p style="margin:18px 0"><a href="' + link + '" style="background:#F7801E;color:#14234B;text-decoration:none;font-weight:bold;padding:10px 18px;border-radius:999px;display:inline-block">Open Quote Requests</a></p>'
+      + '<p style="color:#5D6681;font-size:12px">The customer was asked to send these details on Messenger too. Check your Page inbox for ' + esc(q.id) + '.</p></div>';
+    MailApp.sendEmail({ to: to, subject: subject, body: text, htmlBody: html, name: 'AbotVida' });
   } catch (e) {}
 }
 

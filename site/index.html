@@ -199,6 +199,17 @@ textarea.input{min-height:80px;resize:vertical}
 .done{text-align:center;padding:10px 0}
 .done .tick{width:56px;height:56px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 14px}
 .done .tick svg{width:28px;height:28px}
+.done .msgr-send{display:flex;width:100%;max-width:420px;margin:16px auto 0;justify-content:center;gap:10px;padding:14px 18px;font-size:16px;background:#0866FF;border-color:#0866FF;color:#fff}
+.done .msgr-send:hover{background:#0757D9;border-color:#0757D9}
+.done .msgr-send svg{width:22px;height:22px}
+.done .okline{color:var(--ok)}
+.done .msgr-preview{max-width:420px;margin:12px auto 0;text-align:left}
+.done .msgr-preview summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--muted);text-align:center;list-style:none}
+.done .msgr-preview summary::-webkit-details-marker{display:none}
+.done .msgr-preview summary::after{content:" ▾"}
+.done .msgr-preview[open] summary::after{content:" ▴"}
+.done .msgr-preview .copybox{margin-top:8px}
+.done .msgr-nudge{display:flex;flex-direction:column;gap:4px;max-width:420px;margin:14px auto 0;padding:12px 14px;border-radius:12px;background:var(--warn-soft);border:1px solid var(--warn-line);text-align:left;font-size:14px}
 .ref{font-family:var(--f-display);font-weight:700;font-size:20px;background:var(--surface);display:inline-block;padding:6px 14px;border-radius:10px;margin-top:10px}
 .copybox{background:var(--surface);border-radius:12px;padding:12px 14px;font-size:13px;white-space:pre-wrap;text-align:left;margin-top:14px;user-select:all}
 
@@ -1017,6 +1028,40 @@ function thumb(p, extra='', cls=''){
   return `<div class="thumb ${cls}">${ph(p.category)}${img}${extra}</div>`;
 }
 function msgrHref(){ let u = (S.settings.messengerUrl||'').trim(); if(!u) return ''; if(!/^https?:\/\//i.test(u)) u='https://'+u; return u; }
+// m.me link with the request already typed in (Meta's official "text" parameter). Empty when no Page link is set yet.
+function msgrSendHref(text){
+  const u = msgrHref(); if (!u) return '';
+  try{ const x = new URL(u); if (/(^|\.)m\.me$/i.test(x.hostname) && x.pathname.replace(/\//g,'')==='') return ''; x.searchParams.delete('text'); const q = x.searchParams.toString(); return x.origin + x.pathname + '?' + (q ? q + '&' : '') + 'text=' + encodeURIComponent(text); }catch(e){ return u; }
+}
+// Done screen after a request: one big button that opens the customer's own Messenger with the request typed in.
+function doneMsgrHTML(qq, text){
+  const href = msgrSendHref(text), tapped = !!M.msgrTapped;
+  const box = `<details class="msgr-preview"${href?'':' open'}><summary>${t('willSend')}</summary><div class="copybox" id="msgr-text">${esc(text)}</div></details>`;
+  if (!href) return `${box}<div style="display:flex;justify-content:center;margin-top:14px"><button class="btn" data-act="copy-msgr">${t('copyDetails')}</button></div><p class="small muted" style="margin-top:12px">${t('tip')}</p>`;
+  const nudge = M.nudged && !tapped ? `<div class="msgr-nudge" role="alert"><b>${t('nudgeT')}</b><span>${t('nudge')}</span></div>` : '';
+  return `${nudge}
+    <a class="btn primary msgr-send" href="${esc(href)}" target="_blank" rel="noopener" data-act="msgr-send">${I.msgr}<span>${tapped?t('sendAgain'):t('sendMsgr')}</span></a>
+    <p class="small ${tapped?'okline':'muted'}" style="margin-top:10px">${tapped?`<b>${t('sendDone')}</b> ${t('sendPaste')}`:t('sendHint')}</p>
+    ${box}
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:12px">
+      <button class="btn sm ghost" data-act="copy-msgr">${t('copyDetails')}</button>
+      ${M.nudged && !tapped ? `<button class="btn sm ghost" data-act="close-anyway">${t('closeAnyway')}</button>`:''}
+    </div>`;
+}
+function msgrTapped(){
+  if (!M || M.msgrTapped) return;
+  const el = document.getElementById('msgr-text'), text = el ? el.textContent : '';
+  try{ navigator.clipboard && navigator.clipboard.writeText(text).catch(()=>{}); }catch(e){}
+  M.msgrTapped = true;
+  const qq = M.quoteRec || S.quotes.find(x=>x.id===M.quoteId);
+  if (qq){
+    if (API_URL) api({ action:'msgrTap', id:qq.id, contact:qq.contact }).catch(()=>{});
+    else { const q = S.quotes.find(x=>x.id===qq.id); if (q && !q.msgrAt){ q.msgrAt = Date.now(); save(); } }
+  }
+  setTimeout(()=>{ if (M && M.msgrTapped) renderModal(); }, 300);
+}
+// Closing the done screen before opening Messenger shows one gentle reminder first.
+function wantsMsgrNudge(){ return M && (M.kind==='offer'||M.kind==='custom') && M.step==='done' && !M.msgrTapped && !M.nudged && !!msgrSendHref('x'); }
 function linkify(u){ u=(u||'').trim(); if(!u) return ''; return /^https?:\/\//i.test(u) ? u : 'https://'+u; }
 
 /* ---------- toast + copy ---------- */
@@ -1065,9 +1110,12 @@ const LANG = {
     back:'Back', submit:'Submit quote request',
     email:'Email', emailHint:'For payment reminders', emailPh:'you@example.com', errEmail:'Please check your email address, or leave it blank.', ownerBtn:'Owner',
     errReq:'Please enter your name and contact number.', errNum:'Please enter a valid mobile number, for example 0917 123 4567.',
-    sent:n=>`Request sent. Salamat, ${n}!`, pending:'Your request is <b>Pending Review</b>. We\'ll confirm availability and your final terms before anything is purchased.',
-    cont:'Continue on Messenger', copyDetails:'Copy details for Messenger', tip:'Tip: paste these details into Messenger so we can find your request faster.',
-    copyText:(q,m)=>`Hi! I sent an installment quote request (${q.id}).\nItem: ${q.productName}\nTerm: ${m}\nService charge: ${peso(q.dp)}\n${q.months===1?'Due after 1 month: '+peso(q.monthly):'Monthly: '+peso(q.monthly)+'/mo'}\nTotal: ${peso(q.total)}\nName: ${q.name}`,
+    sent:n=>`Request saved. Salamat, ${n}!`, pending:'Your request is <b>Pending Review</b>. We\'ll confirm availability and your final terms before anything is purchased.',
+    cont:'Continue on Messenger', copyDetails:'Copy details', tip:'Tip: paste these details into Messenger so we can find your request faster.',
+    sendMsgr:'Send to AbotVida on Messenger', sendHint:'Your request is already typed in. Just tap <b>Send</b> in Messenger.',
+    sendPaste:'If the message box opens empty, just paste. We copied your details.', sendDone:'Opened Messenger. Did you tap Send?', sendAgain:'Open Messenger again',
+    willSend:'Your message', nudgeT:'One last step', nudge:'Please send your request on Messenger so we can check it faster. It\'s already saved, so you won\'t lose it either way.', closeAnyway:'Close anyway',
+    copyText:(q,m)=>`Hi AbotVida! I'd like to request this item on installment.\nRef: ${q.id}\nItem: ${q.productName}\nTerm: ${m}${q.months===1?' · '+peso(q.monthly):' · '+peso(q.monthly)+'/month'}\nService charge: ${peso(q.dp)}\nTotal: ${peso(q.total)}\nName: ${q.name}`,
     close:'Close',
     promos:'Promotions', categories:'Categories', allProducts:'All products', results:q=>`Results for "${q}"`, sortBy:'Sort', sortRec:'Recommended', sortMonthly:'Lowest monthly', sortTotal:'Lowest total',
     budgetLbl:'Monthly budget', b1:'₱1,000/mo or less', b2:'₱1,000–2,500/mo', b3:'Over ₱2,500/mo', clear:'Clear filters', seeAll:'See all', recent:'Recently viewed',
@@ -1085,7 +1133,7 @@ const LANG = {
     itemName:'Item name or description', itemPh:'e.g. Samsung Galaxy S25 Ultra 512GB, black', link:'Link to the item', linkPh:'Shopee, Lazada or store link',
     prefTerm:'Preferred number of months', notSure:'Not sure yet', reqSend:'Send request', errItem:'Please tell us which item you want.',
     reqAfter:'We\'ll check the item and message you with the price, service charge and monthly amount.',
-    reqCopy:(q,m)=>`Hi! I requested an item (${q.id}).\nItem: ${q.productName}${q.link?'\nLink: '+q.link:''}\nPreferred term: ${m}\nName: ${q.name}`,
+    reqCopy:(q,m)=>`Hi AbotVida! I'd like to request an item on installment.\nRef: ${q.id}\nItem: ${q.productName}${q.link?'\nLink: '+q.link:''}\nPreferred term: ${m}\nName: ${q.name}`,
     totalShort:'Total', infoTitle:'Good to know',
     iWarranty:'Brand new with store warranty', iDelSmall:'Free delivery or meet-up', iDelLarge:'Delivery charge is included in the price',
     iPay:'Pay monthly through GCash, mobile banking or cash', iReq:'Valid ID and ATM card needed once approved. Not needed to request a quote.',
@@ -1442,12 +1490,7 @@ function offerHTML(){
       <h3 style="font-size:22px">${esc(t('sent')(qq.name.split(' ')[0]))}</h3>
       <p class="muted" style="margin-top:6px">${t('pending')}</p>
       <div class="ref num">${esc(qq.id)}</div>
-      <div class="copybox" id="msgr-text">${esc(t('copyText')(qq, t('months')(qq.months)))}</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">
-        ${m?`<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>${t('cont')}</span></a>`:''}
-        <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
-      </div>
-      <p class="small muted" style="margin-top:12px">${t('tip')}</p>
+      ${doneMsgrHTML(qq, t('copyText')(qq, t('months')(qq.months)))}
       <p class="small muted" style="margin-top:10px">Once approved, <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime with your mobile number.</p>
     </div></div>`;
   }
@@ -1515,11 +1558,8 @@ function customHTML(){
       <h3 style="font-size:22px">${esc(t('sent')(qq.name.split(' ')[0]))}</h3>
       <p class="muted" style="margin-top:6px">${t('reqAfter')}</p>
       <div class="ref num">${esc(qq.id)}</div>
-      <div class="copybox" id="msgr-text">${esc(t('reqCopy')(qq, qq.months?t('months')(qq.months):t('notSure')))}</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:16px">
-        ${m?`<a class="btn primary" href="${esc(m)}" target="_blank" rel="noopener">${I.msgr}<span>${t('cont')}</span></a>`:''}
-        <button class="btn" data-act="copy-msgr">${t('copyDetails')}</button>
-      </div><p class="small muted" style="margin-top:10px">Once approved, <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime with your mobile number.</p></div></div>`;
+      ${doneMsgrHTML(qq, t('reqCopy')(qq, qq.months?t('months')(qq.months):t('notSure')))}
+      <p class="small muted" style="margin-top:10px">Once approved, <button class="linkbtn small" data-act="balance-open">check your balance</button> anytime with your mobile number.</p></div></div>`;
   }
   return `${head}<div class="m-body"><form class="form" data-form="custom" novalidate>
     <p class="muted">${t('reqSub')}</p>
@@ -2199,14 +2239,14 @@ function ownerQuotes(){
     <thead><tr><th>Request</th><th>Customer</th><th>Item</th><th class="r">Amounts</th><th>Status</th><th class="r stick">Actions</th></tr></thead>
     <tbody>${list.map(q=>`<tr>
       <td><b class="num">${esc(q.id)}</b><span class="sub">${fdt(q.createdAt)}${q.sample?' · Sample':''}</span></td>
-      <td><b>${esc(q.name)}</b><span class="sub num">${esc(q.contact)}</span>${q.messenger?`<a class="small" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">Messenger</a>`:''}</td>
+      <td><b>${esc(q.name)}</b><span class="sub num">${esc(q.contact)}</span>${q.msgrAt?`<span class="pill info plain" title="Opened Messenger from the request screen ${esc(fdt(q.msgrAt))}">Opened Messenger</span> `:''}${q.messenger?`<a class="small" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">Messenger</a>`:''}</td>
       <td style="min-width:200px">${esc(q.productName)}${q.custom?' <span class="pill info plain">Custom request</span>':''}<span class="sub">${prodLine(q)}</span>${q.message?`<span class="sub" style="font-style:italic">"${esc(q.message)}"</span>`:''}</td>
       <td class="r num small">${q.custom&&!q.price?'<span class="muted">Price to be quoted</span>':`<b>${peso(plan(q.price,q.months).monthly)}${q.months===1?'':'/mo'}</b><span class="sub">${peso(q.dp)} service charge · total ${peso(q.total)}</span>`}</td>
       <td>${pill(q.status)}</td>
       <td class="actions stick">${quoteActions(q)}</td>
     </tr>`).join('')}</tbody></table></div>
   <div class="ocards">${list.map(q=>`<div class="ocard">
-      <div class="oc-top"><div style="min-width:0"><b>${esc(q.name)}</b><span class="meta num">${esc(q.contact)} · ${esc(q.id)} · ${fdt(q.createdAt)}</span></div>${pill(q.status)}</div>
+      <div class="oc-top"><div style="min-width:0"><b>${esc(q.name)}</b><span class="meta num">${esc(q.contact)} · ${esc(q.id)} · ${fdt(q.createdAt)}</span>${q.msgrAt?'<span class="pill info plain" style="margin-top:4px">Opened Messenger</span>':''}</div>${pill(q.status)}</div>
       <div><b class="oc-item">${esc(q.productName)}</b>${q.custom?' <span class="pill info plain">Custom</span>':''}<span class="meta">${prodLine(q)}</span><span class="meta num">${money(q)}</span>${q.message?`<span class="meta" style="font-style:italic">"${esc(q.message)}"</span>`:''}</div>
       <div class="oc-acts">${q.messenger?`<a class="btn sm" href="${esc(linkify(q.messenger))}" target="_blank" rel="noopener">${I.msgr}<span>Messenger</span></a>`:''}${quoteActions(q)}</div>
     </div>`).join('')}</div>`:`<div class="empty">No ${ui.quoteFilter==='All'?'':ui.quoteFilter.toLowerCase()+' '}requests.</div>`}`;
@@ -3302,7 +3342,8 @@ window.addEventListener('hashchange', route);
 document.addEventListener('click', e=>{
   const el = e.target.closest('[data-act]'); if(!el) return;
   const act = el.dataset.act, id = el.dataset.id;
-  if (act==='backdrop'){ if(e.target===el) closeModal(); return; }
+  if (act==='backdrop'){ if(e.target===el){ if (wantsMsgrNudge()){ M.nudged=true; renderModal(); return; } closeModal(); } return; }
+  if (act==='msgr-send'){ msgrTapped(); return; }
   switch(act){
     case 'home': if(view==='owner'){ location.hash='owner'; } else if(view==='product'){ ui.homeY=0; location.hash=''; } else window.scrollTo({top:0,behavior:'smooth'}); break;
     case 'open-item': ui.homeY = window.scrollY; ui.fromHome = view==='shop'; if (view==='product' && location.hash==='#item-'+id){ e.preventDefault(); } break;
@@ -3362,7 +3403,8 @@ document.addEventListener('click', e=>{
     case 'offer-form': M.step='form'; M.err=''; renderModal(); break;
     case 'offer-back': M.step='terms'; M.err=''; renderModal(); break;
     case 'copy-msgr': copy(document.getElementById('msgr-text').textContent); break;
-    case 'close': closeModal(); break;
+    case 'close': if (wantsMsgrNudge()){ M.nudged=true; renderModal(); break; } closeModal(); break;
+    case 'close-anyway': closeModal(); break;
     case 'tab': location.hash = 'owner-'+el.dataset.tab; if (API_URL && canRefresh()) setTimeout(()=>{ if (canRefresh()) ownerLoad(true); }, 0); break;
     case 'prod-new': ui.pfUploading=0; M={kind:'product',id:null,err:''}; renderModal(); break;
     case 'prod-edit': ui.pfUploading=0; M={kind:'product',id,err:''}; renderModal(); break;
