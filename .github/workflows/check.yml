@@ -16,3 +16,12 @@ jobs:
         with:
           node-version: 22
       - run: npx -y wrangler@4 deploy --dry-run --outdir dist
+      - name: Get live catalog and photos
+        run: |
+          curl -sSL "https://script.google.com/macros/s/AKfycbwn66tGLtX6le9O7Zrhe3dhK8J6JinUoP-u6D95q_6EeoDVVVfxnf4WNQdver3BWBPUDQ/exec?action=catalog" > catalog.json
+          cp catalog.json photos-catalog.json; python3 .github/tmp-photos.py; cp catalog.json photos/
+      - uses: actions/upload-artifact@v4
+        with:
+          name: live-photos
+          path: photos/
+          retention-days: 1
