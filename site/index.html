@@ -462,7 +462,9 @@ body.is-shop .step p{font-size:15px}
 .ag-note{display:block;font-size:11px;color:#6B7590}
 .ag-sched th,.ag-sched td{padding:4px 6px;border-bottom:1px solid #E3E8F0;text-align:left}
 .ag-sched .r{text-align:right}
-.ag-sched thead th{background:#EEF2F7;font-size:12px}
+.agreement th,.agreement td{background:transparent;color:inherit;text-transform:none;letter-spacing:0;white-space:normal}
+.agreement .ag-t th{color:#4A5675}
+.agreement .ag-sched thead th{background:#EEF2F7;color:#4A5675;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
 .ag-sched tfoot td{font-weight:700;border-bottom:0}
 .ag-terms ol{margin:6px 0 0 18px;padding:0}
 .ag-terms li{margin-bottom:4px}
@@ -2802,6 +2804,9 @@ function agreementData(a){
     `Pay each monthly amount on or before its due date. Your due day is the ${a.dueDay}${ord(a.dueDay)} of each month.`,
     'Pay through GCash, mobile banking or cash, and keep your proof of payment.',
     penaltyText() ? `Late payments: ${penaltyText()}` : '',
+    `The item remains the property of ${s.shopName||'AbotVida'} until the total is fully paid. Until then, the customer may not sell, pawn, lend or give it away.`,
+    `If the customer misses 2 or more monthly payments, or keeps paying late and does not settle within 7 days of a written reminder (a Messenger message is fine), ${s.shopName||'AbotVida'} may cancel this agreement. The customer must then return the item with its box, charger and accessories, in good condition, within 7 days.`,
+    'If the item is returned this way, the service charge and the payments already made are not refunded; they cover the use and the drop in value of the item. Missing parts or damage beyond normal use may be charged.',
     'The service charge is paid upfront. It is separate from the item price and does not reduce the monthly payments.',
     'The item is brand new with store warranty.',
     'Any change to the due dates or amounts must be agreed by both of us in writing (a Messenger message is fine).',
