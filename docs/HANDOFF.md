@@ -98,12 +98,14 @@
   - Warnings with a required confirmation for: customers with **overdue payments**, and first purchases above the **first-purchase limit** (Settings; blank = off).
   - Custom requests get their price and service charge at approval. Returning-customer alert.
   - **Opened Messenger** tag on requests whose customer tapped the Messenger button (Code.gs `msgrTap`, stored in script properties `msgrTaps`, merged into quotes on load). It does not confirm Send was pressed.
+  - **Edit** on pending requests (Nov 6): item, item price, service charge, term, "What you agreed" owner note, customer details; Save or Save and approve. "Edited" tag. Approve window has "Edit request first"; custom requests prefill a price set by Edit. Approved requests show an Agreement button.
+  - **Customer emails sent only by the owner** (Nov 6; Code.gs `sendCustomerEmail`, owner-only): after Approve an Approval email window opens prefilled with the agreement PDF attached (Send / Skip for now); account has Email agreement and Email payment reminder; Agreement window has Email to customer; Reminders tab has Email reminder per row. Editable To/Subject/Message; sent from the Gmail that owns the script, reply-to Owner email; logged in Reminder log (type manual-…) and on the account (`mailLog`). PDF made by Google from `agreementPdfHTML`; check the ₱ sign renders in a real test.
   - **New-request email** (Owner email in Settings): HTML email with item, term, monthly, service charge, item price, total, contact; warnings for overdue / returning customer / first purchase above `newCustLimit`; "Open Quote Requests" button using `SITE_URL` in Code.gs (update it when a custom domain is connected).
 - **Customers** are grouped by phone number, with email, purchases, payment record and notes.
 - **Accounts:**
   - schedule, Edit account (details, email, due dates, reminder settings and snooze, card used)
   - service charge status; one account per purchase
-  - **Agreement** button: printable customer agreement (item, price, service charge, monthly amounts, schedule, terms, signature lines); print / save as PDF or copy as text. Have a lawyer review the wording.
+  - **Agreement** button (inside the account; only exists after approval): printable customer agreement; always white paper even in dark mode; terms include ownership until fully paid and return of the item after 2+ missed payments or unsettled late payments within 7 days of a written reminder, payments not refunded on return (Recto Law: can't also collect the balance after repossession; lawyer to review) (item, price, service charge, monthly amounts, schedule, terms, signature lines); print / save as PDF or copy as text. Have a lawyer review the wording.
 - **Payments:** method, reference number, notes, partial payments, remove a mistaken entry.
 - **Reminders:**
   - overdue, due today, due soon, with copy-ready messages (overdue wording for late ones)
@@ -126,7 +128,7 @@
 
 ## Owner to-do now
 1. **Add the Gemini key in Cloudflare:** Workers & Pages → abotvida → Settings → Variables and Secrets → Add → Type: Secret, Name: `GEMINI_API_KEY` → Deploy. The chat bubble stays hidden until this is done.
-2. **Paste the latest Code.gs** (Nov 6 version adds `msgrTap`, the richer new-request email and the required-email check; earlier Nov 4 changes: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive, source links removed from the public catalog, no doubled brand in request names) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
+2. **Paste the latest Code.gs** (Nov 6 morning version adds `sendCustomerEmail`, `msgrTap`, the richer new-request email and the required-email check; earlier Nov 4 changes: `balance` action, `chatOn` and `chatLogo` public settings, chat logo saved to Drive, source links removed from the public catalog, no doubled brand in request names) into Apps Script → Save → Deploy → Manage deployments → Edit → New version → Deploy.
    - Until this is done, Check my balance on the live shop shows a connection error, and the Chat assistant switch and chat logo don't reach customers.
 3. In the Sheet: AbotVida → **Set up email reminders**, and allow access.
 4. In the dashboard Settings:
@@ -145,6 +147,10 @@
 - Minimum monthly (e.g. ₱500) and 18–24 months only above ~₱20,000; check cards offer 0% for 18/24 months.
 - Banners: link "Request Any Item"; hide Groceries banner until groceries exist; give "Good Day Shoppers!" a real message; pick 4–6 Hot picks.
 - Done in code: no doubled brand names, Abenson source links private (also stripped from the public catalog once Code.gs is pasted), phone product page overflow fixed, banner warnings in Shop page.
+
+## Email accounts (explained Nov 6, no change made)
+- Owner email in Settings = where notifications and customer replies go; safe to change anytime.
+- Emails are sent from the Gmail that owns the Sheet/Apps Script. Moving to a new Gmail: transfer ownership (not copy) of the Sheet and "AbotVida images" folder, redeploy the web app, update API_URL, re-run Set up email reminders.
 
 ## Logo exploration (Nov 5, not adopted)
 - Owner asked for a more modern logo; feedback: current mark has too many ideas (bag, A, V, card, waves) and the card reads as "lender". Three sketches made: 1 Steps to reach (recommended), 2 Within reach (abot-kamay), 3 Bag monogram. Owner has not picked one yet.
