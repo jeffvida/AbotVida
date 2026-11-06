@@ -72,6 +72,7 @@ function doPost(e) {
       case 'ownerSave': requireOwner(body); return json(ownerSave(body));
       case 'changePassword': requireOwner(body); return json(changePassword(body));
       case 'uploadImage': requireOwner(body); return json(uploadImage(body));
+      case 'sendCustomerEmail': requireOwner(body); return json(sendCustomerEmail(body));
       default: return json({ ok: false, error: 'unknown' });
     }
   } catch (err) {
@@ -505,6 +506,33 @@ function sendReminders() {
     }
   });
   return { sent: sent };
+}
+// Emails the owner sends by hand from the dashboard: approval, agreement, payment reminder.
+// The agreement PDF is made by Google from the page the dashboard sends. Logged in the Reminder log tab.
+function sendCustomerEmail(b) {
+  const to = clip(b.to, 120), subject = clip(b.subject, 200), text = clip(b.text, 8000);
+  if (!validEmail(to)) fail('badEmail');
+  if (!subject || !text) fail('errReq');
+  let quota = 0; try { quota = MailApp.getRemainingDailyQuota(); } catch (e) {}
+  if (quota < 1) fail('noQuota');
+  const s = readSettings(), shop = s.shopName || 'AbotVida';
+  const esc = x => String(x).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const html = '<div style="font-family:Arial,sans-serif;font-size:14px;line-height:1.55;color:#14234B;white-space:pre-wrap;max-width:560px">'
+    + esc(text).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" style="color:#103568">$1</a>') + '</div>';
+  const opt = { to: to, subject: subject, body: text, htmlBody: html, name: shop };
+  if (validEmail(s.ownerEmail || '')) opt.replyTo = s.ownerEmail;
+  if (b.pdfHtml) {
+    const pdf = Utilities.newBlob(String(b.pdfHtml).slice(0, 400000), MimeType.HTML, 'agreement.html').getAs(MimeType.PDF);
+    pdf.setName(clip(b.pdfName, 100) || (shop + ' agreement.pdf'));
+    opt.attachments = [pdf];
+  }
+  MailApp.sendEmail(opt);
+  const kind = /^(approval|agreement|reminder)$/.test(b.kind) ? b.kind : 'email';
+  try {
+    sheetFor(LOG_TAB, LOG_COLS).appendRow([new Date(), clip(b.customer, 80), to, clip(b.item, 200), b.n ? String(b.n) : '', '', 'sent by owner: ' + kind, '',
+      JSON.stringify({ at: Date.now(), accountId: clip(b.accountId, 40), n: +b.n || null, type: 'manual-' + kind, email: to })]);
+  } catch (e) {}
+  return { ok: true, at: Date.now() };
 }
 function menuSetupReminders() {
   setReminderTrigger(true);

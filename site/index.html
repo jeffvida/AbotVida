@@ -2365,7 +2365,7 @@ function submitApprove(form){
   if (f.first < f.start){ M.err='The first due date should be on or after the start date.'; renderModal(); return; }
   if (!q.custom){ const pl = plan(q.price, q.months); Object.assign(q, { monthly:pl.monthly, last:pl.last }); }
   const a = createAccount(q, f.start, f.first, !!f.dpPaid, f.cardId);
-  toast('Account created'); M = {kind:'account', id:a.id}; renderModal(); render();
+  toast('Account created'); M = {kind:'sendmail', id:a.id, type:'approval', fromApprove:true}; renderModal(); render();
 }
 
 /* ---------- Reviews & customer photos (owner) ---------- */
@@ -2758,8 +2758,8 @@ function accountHTML(){
   const pays = a.schedule.flatMap(it=>(it.payments||[]).map(p=>({a,it,p}))).sort((x,y)=>y.p.date.localeCompare(x.p.date)||y.p.at-x.p.at);
   const others = S.accounts.filter(x=>x.id!==a.id && ckey(x.customer.contact)===key).length;
   return `<div class="m-head"><div><p class="eyebrow">${esc(a.quoteId)} · ${a.sample?'Sample account':'Account'}</p><h2 style="font-size:22px;margin-top:4px">${esc(a.customer.name)} · ${esc(a.productName)}</h2>
-      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${pill(st)}<button class="btn sm" data-act="open-cust" data-id="${esc(key)}">View customer${others?` · ${others} other purchase${others>1?'s':''}`:''}</button>${a.cancelled?'':`<button class="btn sm primary" data-act="edit-acct" data-id="${a.id}">Edit account</button>`}<button class="btn sm" data-act="agreement" data-id="${a.id}">Agreement</button></div>
-      <p class="small muted" style="margin-top:6px">${esc(remSummary(a))}</p></div>
+      <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">${pill(st)}<button class="btn sm" data-act="open-cust" data-id="${esc(key)}">View customer${others?` · ${others} other purchase${others>1?'s':''}`:''}</button>${a.cancelled?'':`<button class="btn sm primary" data-act="edit-acct" data-id="${a.id}">Edit account</button>`}<button class="btn sm" data-act="agreement" data-id="${a.id}">Agreement</button>${a.cancelled?'':`<button class="btn sm" data-act="mail" data-type="agreement" data-id="${a.id}">Email agreement</button>${acctBalance(a)>0?`<button class="btn sm" data-act="mail" data-type="reminder" data-id="${a.id}">Email payment reminder</button>`:''}`}</div>
+      <p class="small muted" style="margin-top:6px">${esc(remSummary(a))}</p>${(()=>{ const l=(a.mailLog||[]).slice().sort((x,y)=>y.at-x.at)[0]; return l?`<p class="small okline" style="margin-top:2px">${esc(MAIL_KIND[l.kind]||'Email')} sent to ${esc(l.to)} · ${esc(fdt(l.at))}</p>`:''; })()}</div>
     <button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
   <div class="m-body">
     <div class="infogrid">
@@ -2823,8 +2823,18 @@ function agreementHTML(){
   return `<div class="m-head no-print"><div><p class="eyebrow">${esc(a.quoteId)} · Agreement</p><h2 style="font-size:22px;margin-top:4px">Customer agreement</h2></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
   <div class="m-body">
     <div class="callout no-print" style="border-style:solid">${I.info}<div>Print it for the customer to sign, or save it as a PDF and send it on Messenger. Have a lawyer check this wording once before you start using it.</div></div>
-    <div class="agreement" id="agreement-doc">
-      <div class="ag-top"><span class="flock">${logoMark()}${wordmark()}</span><div class="ag-ref"><b>Installment agreement</b><span>Ref. ${esc(a.quoteId)}</span><span>Prepared ${fdate(today())}</span></div></div>
+    ${agreementDoc(a)}
+    <div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px">
+      <button class="btn" data-act="open-acct" data-id="${a.id}">Back to account</button>
+      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="ag-copy" data-id="${a.id}">Copy as text</button><button class="btn" data-act="mail" data-type="agreement" data-id="${a.id}">Email to customer</button><button class="btn primary" data-act="ag-print">Print or save as PDF</button></span>
+    </div>
+  </div>`;
+}
+function agreementDoc(a, pdf){
+  const {s, pl, terms, shopLines, total} = agreementData(a), c = a.customer||{};
+  const row = (k,v) => `<tr><th>${k}</th><td>${v}</td></tr>`;
+  return `<div class="agreement" id="agreement-doc">
+      <div class="ag-top"><span class="flock">${pdf?'':logoMark()}${wordmark()}</span><div class="ag-ref"><b>Installment agreement</b><span>Ref. ${esc(a.quoteId)}</span><span>Prepared ${fdate(today())}</span></div></div>
       ${shopLines.length?`<p class="ag-small">${shopLines.map(esc).join(' · ')}</p>`:''}
       <div class="ag-cols">
         <table class="ag-t"><caption>Customer</caption>${row('Name',esc(c.name))}${row('Mobile',esc(c.contact))}${c.email?row('Email',esc(c.email)):''}</table>
@@ -2846,12 +2856,94 @@ function agreementHTML(){
         <div><span class="ag-line"></span><b>${esc(c.name)}</b><span>Customer · signature and date</span></div>
         <div><span class="ag-line"></span><b>${esc(s.shopName||'AbotVida')}</b><span>Signature and date</span></div>
       </div>
-    </div>
-    <div class="no-print" style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:18px">
-      <button class="btn" data-act="open-acct" data-id="${a.id}">Back to account</button>
-      <span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="ag-copy" data-id="${a.id}">Copy as text</button><button class="btn primary" data-act="ag-print">Print or save as PDF</button></span>
-    </div>
-  </div>`;
+    </div>`;
+}
+// Stand-alone page for the emailed PDF (Google turns this HTML into the PDF; keep styles simple).
+function agreementPdfHTML(a){
+  const css = `body{font-family:Arial,Helvetica,sans-serif;color:#14234B;font-size:12px;line-height:1.45;margin:0}
+.agreement{padding:6px}.wm{font-weight:800;font-size:20px;color:#103568}.wm .v{color:#F7801E}
+.ag-top{border-bottom:2px solid #F7801E;padding-bottom:10px;margin-bottom:8px;overflow:hidden}.ag-top .flock{float:left}
+.ag-ref{float:right;text-align:right;font-size:11px;color:#4A5675}.ag-ref span{display:block}.ag-ref b{display:block;font-size:15px;color:#14234B}
+.ag-small{font-size:11px;color:#4A5675;margin:6px 0}
+.ag-cols table{width:49%;display:inline-table;vertical-align:top}
+table{width:100%;border-collapse:collapse;margin:8px 0}caption{text-align:left;font-weight:bold;font-size:11px;text-transform:uppercase;color:#4A5675;padding-bottom:3px}
+.ag-t th{text-align:left;font-weight:bold;color:#4A5675;width:42%;padding:4px 6px 4px 0;border-bottom:1px solid #E3E8F0;vertical-align:top}
+.ag-t td{padding:4px 0;border-bottom:1px solid #E3E8F0}.ag-note{display:block;font-size:10px;color:#6B7590}
+.ag-sched th,.ag-sched td{padding:3px 6px;border-bottom:1px solid #E3E8F0;text-align:left}.ag-sched .r{text-align:right}
+.ag-sched thead th{background:#EEF2F7;font-size:11px}.ag-sched tfoot td{font-weight:bold}
+.ag-terms ol{margin:4px 0 0 18px;padding:0}.ag-terms li{margin-bottom:3px}
+.ag-sign{margin-top:30px;overflow:hidden}.ag-sign div{float:left;width:45%;margin-right:5%;font-size:11px;color:#4A5675}.ag-sign b,.ag-sign span{display:block}.ag-sign b{color:#14234B;font-size:12px}
+.ag-line{border-bottom:1px solid #14234B;height:34px;margin-bottom:5px}`;
+  return `<!doctype html><html><head><meta charset="utf-8"><style>${css}</style></head><body>${agreementDoc(a, true)}</body></html>`;
+}
+/* ---------- Emails to the customer (sent only when the owner presses Send) ---------- */
+function mailDraft(a, kind){
+  const s = S.settings, shop = s.shopName||'AbotVida', c = a.customer||{}, first = (c.name||'').split(' ')[0] || 'there', pl = plan(a.price, a.months);
+  const m = msgrHref(), msgr = m && !/^https?:\/\/m\.me\/?$/i.test(m) ? m : '';
+  const monthly = a.months===1 ? `${peso(a.price)} due after 1 month` : `${peso(pl.monthly)} × ${pl.last!==pl.monthly?a.months-1:a.months}${pl.last!==pl.monthly?` (last month ${peso(pl.last)})`:''}`;
+  const sign = ['', 'Thank you,', shop, msgr?`Messenger: ${msgr}`:''].filter((x,i)=>i<3||x).join('\n');
+  if (kind==='approval') return { subject:`Approved: ${a.productName} (${a.quoteId})`, attach:true, text:[
+    `Hi ${first},`, '', `Good news! Your installment request ${a.quoteId} is approved.`, '',
+    `Item: ${a.productName}`, `Service charge (paid upfront): ${peso(a.dp)}${a.dpPaid?' · received, thank you':''}`, `Monthly payment: ${monthly}`,
+    `First due date: ${fdate(a.firstDue||a.schedule[0].due)} (due every ${a.dueDay}${ord(a.dueDay)} of the month)`, `Total: ${peso(r2((+a.dp||0)+a.price))}`, '',
+    'Next steps:', '• Prepare a valid ID and your ATM card for verification.', `• We'll message you${msgr?' on Messenger':''} to arrange delivery or meet-up.`,
+    '• Pay monthly through GCash, mobile banking or cash, and keep your proof of payment.', '',
+    'Your installment agreement is attached. Please read it; we will both sign it when you receive the item.',
+    `Check your balance anytime: ${balanceUrl()}`, sign].join('\n') };
+  if (kind==='agreement') return { subject:`Your ${shop} installment agreement (${a.quoteId})`, attach:true, text:[
+    `Hi ${first},`, '', `Attached is your installment agreement for ${a.productName} (${a.quoteId}).`, '',
+    `Monthly payment: ${monthly}`, `Balance left: ${peso(acctBalance(a))}`, '',
+    'Please keep a copy. If anything looks wrong, just reply to this email or message us.', `Check your balance anytime: ${balanceUrl()}`, sign].join('\n') };
+  // payment reminder: everything overdue, or else the next payment
+  const open = a.schedule.filter(it=>instStatus(it)!=='Paid'), late = open.filter(it=>instStatus(it)==='Overdue'), it = late[0] || open[0];
+  if (!it) return { subject:'', text:'', attach:false, none:true };
+  const lateSum = r2(late.reduce((t,i)=>t+remaining(i),0));
+  const subject = late.length ? `Overdue payment: ${peso(lateSum)} (${a.productName})` : `Payment reminder: ${peso(remaining(it))} due on ${fdate(it.due)}`;
+  const lines = [reminderText(a, it), ''];
+  if (late.length>1) lines.push(`Overdue payments: ${late.length} · total ${peso(lateSum)}`, ...late.map(i=>`• Payment ${i.n} of ${a.months}: ${peso(remaining(i))}, was due ${fdate(i.due)}`), '');
+  else lines.push(`Payment ${it.n} of ${a.months}: ${peso(remaining(it))}, due ${fdate(it.due)}`);
+  lines.push(`Item: ${a.productName}`, `Balance left: ${peso(acctBalance(a))}`, '', 'Pay through GCash, mobile banking or cash, and send us your proof of payment.', 'If you have already paid, thank you, and please ignore this email.', sign);
+  return { subject, text:lines.join('\n'), attach:false, n:it.n };
+}
+const MAIL_KIND = { approval:'Approval email', agreement:'Agreement email', reminder:'Payment reminder email' };
+function sendMailHTML(){
+  const a = S.accounts.find(x=>x.id===M.id); if (!a) return '';
+  if (!M.draft) M.draft = mailDraft(a, M.type);
+  const d = M.draft, email = (a.customer||{}).email||'', log = (a.mailLog||[]).filter(l=>l.kind===M.type).sort((x,y)=>y.at-x.at)[0];
+  return `<div class="m-head"><div><p class="eyebrow">${esc(a.quoteId)} · ${esc(a.customer.name)}</p><h2 style="font-size:22px;margin-top:4px">${MAIL_KIND[M.type]}</h2>
+    <p class="small muted" style="margin-top:4px">Nothing is sent until you press Send. You can edit the message first.${log?` Last sent ${esc(fdt(log.at))}.`:''}</p></div><button class="xbtn" data-act="close" aria-label="Close">${I.x}</button></div>
+  <div class="m-body">${d.none?`<p>This account has no payments left to remind about.</p><div style="display:flex;justify-content:flex-end"><button class="btn" data-act="open-acct" data-id="${a.id}">Back to account</button></div>`:`<form class="form" data-form="sendmail" novalidate>
+    <div class="field"><label for="ml-to">To</label><input class="input" id="ml-to" name="to" type="email" value="${esc(M.to!=null?M.to:email)}" placeholder="customer@example.com">${email?'':'<span class="hint">No email on this account yet. It will be saved to the account when you send.</span>'}</div>
+    <div class="field"><label for="ml-sub">Subject</label><input class="input" id="ml-sub" name="subject" value="${esc(d.subject)}"></div>
+    <div class="field"><label for="ml-text">Message</label><textarea class="input" id="ml-text" name="text" rows="14" style="min-height:280px;font-size:14px">${esc(d.text)}</textarea></div>
+    <label class="agree-line" for="ml-att"><input type="checkbox" id="ml-att" name="attach" ${d.attach?'checked':''}> Attach the agreement (PDF)</label>
+    ${M.err?`<p class="err" role="alert">${esc(M.err)}</p>`:''}
+    ${API_URL?'':'<p class="small muted">Preview: emails are not really sent here.</p>'}
+    <div style="display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap">${M.fromApprove?`<button type="button" class="btn" data-act="open-acct" data-id="${a.id}">Skip for now</button>`:`<button type="button" class="btn" data-act="open-acct" data-id="${a.id}">Cancel</button>`}<button type="submit" class="btn primary">${M.sending?'Sending…':'Send email'}</button></div>
+  </form>`}</div>`;
+}
+async function submitSendMail(form){
+  if (M.sending) return;
+  const f = Object.fromEntries(new FormData(form)), a = S.accounts.find(x=>x.id===M.id); if (!a) return;
+  const to = (f.to||'').trim(), subject = (f.subject||'').trim(), text = (f.text||'').trim();
+  M.to = to; M.draft = { ...M.draft, subject, text, attach:!!f.attach };
+  if (!validEmail(to)){ M.err='Enter a valid email address.'; renderModal(); return; }
+  if (!subject || !text){ M.err='The subject and message cannot be empty.'; renderModal(); return; }
+  const mine = M; M.sending = true; M.err=''; renderModal();
+  let r;
+  if (API_URL){
+    try{ r = await api({ action:'sendCustomerEmail', token:SY.token, to, subject, text, kind:M.type, accountId:a.id, customer:a.customer.name, item:a.productName, n:M.draft.n||'',
+      pdfHtml: f.attach ? agreementPdfHTML(a) : '', pdfName: `${S.settings.shopName||'AbotVida'} agreement ${a.quoteId}.pdf` }); }catch(e){ r = { ok:false, error:'net' }; }
+  } else r = { ok:true, preview:true };
+  if (M !== mine) return;
+  M.sending = false;
+  if (!r || !r.ok){
+    M.err = r && r.error==='badEmail' ? 'That email address was not accepted.' : r && r.error==='noQuota' ? 'Your Gmail daily sending limit is used up. Try again tomorrow.' : r && r.error==='unknown' ? 'Your Google Sheet needs the latest Code.gs (deploy a New version) before it can send this email.' : r && r.error==='net' ? 'Could not reach Google Sheets. Check your connection and try again.' : 'The email was not sent' + (r && r.detail ? ': ' + r.detail : '.');
+    renderModal(); return; }
+  if (!a.customer.email) a.customer.email = to;
+  (a.mailLog = a.mailLog||[]).push({ kind:M.type, at:Date.now(), to });
+  save(); toast(r.preview ? 'Preview only: email not sent' : `Email sent to ${to}`);
+  M = {kind:'account', id:a.id}; renderModal(); render();
 }
 function agreementText(a){
   const {s, pl, terms, total} = agreementData(a), c = a.customer||{};
@@ -3047,6 +3139,7 @@ function ownerReminders(){
       <div class="msg">${esc(txt)}</div>
       <div class="acts">
         <button class="btn sm primary" data-act="copy-rem" data-a="${a.id}" data-n="${it.n}">Copy message</button>
+        <button class="btn sm" data-act="mail" data-type="reminder" data-id="${a.id}">Email reminder</button>
         ${r.channel==='Messenger' && ml ? `<a class="btn sm" href="${esc(ml)}" target="_blank" rel="noopener">${I.msgr}<span>Open their Messenger</span></a>` : ''}
         ${r.channel==='SMS / Text' || r.channel==='Phone call' || (r.channel==='Messenger' && !ml) ? `<button class="btn sm" data-act="copy-text" data-text="${esc(a.customer.contact)}">Copy number</button>` : ''}
         ${r.channel==='Email' ? `<button class="btn sm" disabled title="Connect an email service to enable">Send email</button>` : ''}
@@ -3359,8 +3452,8 @@ function initCarousels(){
 function renderModal(){
   if (!M){ modalRoot.innerHTML=''; document.body.classList.remove('modal-open'); return; }
   document.body.classList.add('modal-open');
-  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='bulk'?bulkHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='editquote'?editQuoteHTML() : M.kind==='balance'?balanceHTML() : '';
-  const narrow = ['bulk','approve','editquote','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
+  const html = M.kind==='offer'?offerHTML() : M.kind==='product'?productFormHTML() : M.kind==='approve'?approveHTML() : M.kind==='account'?accountHTML() : M.kind==='pay'?payHTML() : M.kind==='import'?importHTML() : M.kind==='bulk'?bulkHTML() : M.kind==='customer'?customerHTML() : M.kind==='newpurchase'?newPurchaseHTML() : M.kind==='editacct'?editAcctHTML() : M.kind==='card'?cardFormHTML() : M.kind==='review'?reviewHTML() : M.kind==='custom'?customHTML() : M.kind==='privacy'?privacyModalHTML() : M.kind==='agreement'?agreementHTML() : M.kind==='editquote'?editQuoteHTML() : M.kind==='sendmail'?sendMailHTML() : M.kind==='balance'?balanceHTML() : '';
+  const narrow = ['bulk','approve','editquote','sendmail','pay','newpurchase','editacct','card','review','custom','privacy','balance'].includes(M.kind) || (M.kind==='offer' && M.step!=='offer');
   const wasOpen = !!modalRoot.firstChild;
   const pf = modalRoot.querySelector('form[data-form]');
   const keep = (pf && M.err) ? [pf.dataset.form, [...pf.elements].filter(el=>el.name && !['file','submit','button'].includes(el.type)).map(el=>[el.name, el.type, el.value, el.checked])] : null;
@@ -3480,6 +3573,7 @@ document.addEventListener('click', e=>{
     case 'card-del-yes': S.cards=S.cards.filter(c=>c.id!==id); S.accounts.forEach(a=>{ if(a.cardId===id) a.cardId=''; }); ui.pendingCardDel=null; save(); render(); toast('Card removed'); break;
     case 'approve': M={kind:'approve',id,err:''}; renderModal(); break;
     case 'edit-quote': M={kind:'editquote',id,err:''}; renderModal(); break;
+    case 'mail': M={kind:'sendmail',id,type:el.dataset.type,err:''}; renderModal(); break;
     case 'decline': S.quotes.find(q=>q.id===id).status='Declined'; save(); render(); toast('Request declined'); break;
     case 'reopen': S.quotes.find(q=>q.id===id).status='Pending Review'; save(); render(); break;
     case 'complete': S.quotes.find(q=>q.id===id).status='Completed'; save(); render(); toast('Marked completed'); break;
@@ -3606,6 +3700,7 @@ document.addEventListener('submit', e=>{
   if (k==='quote') submitQuote(form);
   else if (k==='product') submitProduct(form);
   else if (k==='approve') submitApprove(form);
+  else if (k==='sendmail') submitSendMail(form);
   else if (k==='editquote') submitEditQuote(form, (e.submitter&&e.submitter.value)||'save');
   else if (k==='pay') submitPay(form);
   else if (k==='newpurchase') submitNewPurchase(form);
